@@ -1,199 +1,117 @@
 # castle
 
-Opinionated NixOS foundation for encrypted Hetzner Cloud VMs. Bring up a fresh
-box with:
+Opinionated NixOS foundation for building small self-hosted infrastructures.
 
-- Encrypted ZFS root (aes-256-gcm + zstd, BIOS/GRUB)
-- SSH-unlock in initrd on port 2222 (systemd-initrd + DHCP)
-- DHCP through systemd-networkd
-- Options-based composition — turn things off, tune ports, swap disko/hardware
-  per host without forking
+## What you get
 
-## Quickstart
+- Encrypted ZFS root (aes-256-gcm + zstd), SSH unlock in initrd on port 2222
+- DHCP via systemd-networkd, tuned for Hetzner Cloud VMs (bare metal / other
+  clouds are supported via option toggles + your own disko/hardware-config)
+- Reverse proxy (Caddy) with a Cloudflare Origin CA cert — no ACME, no
+  renewals, 15-year validity
+- Shared PostgreSQL + sops-nix for secrets, age identity derived from the
+  host's SSH host key
+- One declarative user registry (`castle.users`) that every service
+  provisions accounts from
+- One-shot provisioning: `install-host <name>` generates SSH host keys,
+  populates missing sops secrets, kexecs a NixOS installer, and activates
+  the box with services already running
+- `deploy .#<name>` for post-install activation with automatic rollback
+
+Available services today: **Forgejo** (git hosting + CI). Planned:
+Discourse, Plane, Zulip. Towers (workstations for humans + agents) later.
+
+## Getting started
+
+Create your own castle instance — a private repo with your hosts, users,
+and secrets:
 
 ```sh
 mkdir my-castle && cd my-castle
 nix flake init -t github:haqops/castle
 ```
 
-You now have `flake.nix`, `hosts.nix` (with commented examples), `.envrc`
-(direnv auto-activation), and a `.gitignore` covering `secrets/` and build
-artifacts. Fill in a host:
+Everything about running your castle — configuring hosts, adding users,
+Cloudflare setup, provisioning secrets, install and deploy — lives in the
+`README.md` that gets copied into your instance.
 
-```nix
-# hosts.nix
-castle: {
-  citadel = {
-    castle.host.ipv4    = "203.0.113.42";
-    castle.host.sshKeys = [ "ssh-ed25519 AAAA... you@laptop" ];
-  };
-}
-```
+## Design tenets
 
-That's it — everything else defaults sensibly for a Hetzner Cloud VM. Enter
-the devShell (or let direnv do it on `cd`) and install:
-
-```sh
-nix develop      # or: direnv allow, then just cd back in
-install-host citadel
-```
-
-`install-host` does everything the box needs in one shot:
-
-- generates the initrd SSH host key
-- if the config declares any sops secrets, generates a main SSH host key
-  (which doubles as the sops age identity), checks `.sops.yaml` includes
-  the derived age recipient, and runs `update-secrets` to prompt for any
-  missing values
-- bundles the keys via `--extra-files` and kexecs a NixOS installer over
-  any live Linux (Hetzner rescue, a running Debian, etc.)
-- prompts for the ZFS passphrase during install
-
-On first boot the box already knows its SSH host key, so `sops-nix` can
-decrypt the shipped secrets and every service starts immediately.
-
-On every boot the box waits in initrd for the passphrase. Unlock:
-
-```sh
-ssh -p 2222 root@<ip>
-systemd-tty-ask-password-agent --query
-```
-
-Then boot continues, `sshd` on port 22 comes up.
-
-Once the box is up and you edit `hosts.nix` (or any castle module), push
-changes with deploy-rs:
-
-```sh
-deploy .#citadel
-```
-
-`deploy` builds the config locally (or on the remote), copies the closure,
-activates it, and rolls back automatically if activation or a health check
-fails.
-
-## `hosts.nix` shape
-
-`hosts.nix` is a function taking `castle` and returning `{ <hostname> = <cfg>; }`.
-Each `cfg` is a NixOS module — set castle options, add extra imports if needed.
-
-```nix
-castle: {
-  # Typical Hetzner Cloud VM — everything is defaults.
-  citadel = {
-    castle.host.ipv4    = "203.0.113.42";
-    castle.host.sshKeys = [ "ssh-ed25519 AAAA... you@laptop" ];
-  };
-
-  # Tuning some options.
-  tuned = {
-    castle.host.ipv4       = "203.0.113.43";
-    castle.host.sshKeys    = [ "ssh-ed25519 AAAA..." ];
-    castle.initrdSsh.port  = 22222;
-    castle.zfs.autoScrub   = false;
-  };
-
-  # Bare metal / non-Hetzner: bring your own hardware-config and disko.
-  bastion = {
-    disk = null;                     # opt out of the built-in disko
-    imports = [
-      ./hardware/bastion.nix
-      ./disko/bastion.nix
-    ];
-    castle.host.ipv4      = "10.0.0.5";
-    castle.host.sshKeys   = [ "ssh-ed25519 AAAA..." ];
-    castle.hetzner.enable = false;
-  };
-}
-```
-
-The one non-NixOS-module field is `disk`, read by `mkHost`:
-
-- `disk = "zfs-single"` (default) — auto-imports `castle.diskoConfigs.zfs-single`
-- `disk = null` — skip auto-disko; provide your own via `imports`
-
-Everything else is standard NixOS module syntax — `imports`, `castle.*` options,
-any other NixOS options you want to set.
-
-## Options
-
-All castle-provided modules default to enabled for a Hetzner Cloud VM. Turn
-them off individually.
-
-| option                        | default        | notes                                       |
-|-------------------------------|----------------|---------------------------------------------|
-| `castle.host.ipv4`            | *(required)*   | consumed by `install.sh`, not by NixOS      |
-| `castle.host.sshKeys`         | `[]`           | root's `authorized_keys` + initrd default   |
-| `castle.hetzner.enable`       | `true`         | DHCP via networkd, virtio, serial console   |
-| `castle.zfs.enable`           | `true`         | ZFS runtime, `requestEncryptionCredentials` |
-| `castle.zfs.autoScrub`        | `true`         | weekly scrub                                |
-| `castle.initrdSsh.enable`     | `true`         | systemd-initrd + sshd for unlock            |
-| `castle.initrdSsh.port`       | `2222`         |                                             |
-| `castle.initrdSsh.hostKeyPath`| `/etc/secrets/initrd/ssh_host_ed25519_key` | provisioned via `--extra-files`     |
-| `castle.initrdSsh.authorizedKeys` | `castle.host.sshKeys` |                                     |
-| `castle.ssh.enable`           | `true`         | openssh on the main system                  |
-| `castle.ssh.port`             | `22`           |                                             |
-| `castle.nixDefaults.enable`   | `true`         | flakes, GC, TZ, locale, base toolbox        |
-| `castle.nixDefaults.timeZone` | `"UTC"`        |                                             |
-| `castle.nixDefaults.extraPackages` | `[]`      |                                             |
-| `castle.caddy.enable`         | `false`, auto-on when a service registers a vhost | reverse proxy with a Cloudflare Origin CA cert |
-| `castle.caddy.virtualHosts`   | `{}`           | domain → local port; services register here |
-| `castle.postgres.enable`      | `false`, auto-on when a service needs it | shared PostgreSQL instance          |
-| `castle.postgres.package`     | `pkgs.postgresql_17` |                                          |
-| `castle.services.forgejo.enable` | `false`     | Forgejo (git + CI)                          |
-| `castle.services.forgejo.domain` | *(required if enabled)* | e.g. `"git.example.com"`         |
-
-## Services
-
-Service modules auto-enable the infrastructure they need — turning on
-`castle.services.forgejo.enable` also enables `castle.caddy` and
-`castle.postgres`, and registers the vhost.
-
-TLS is not managed by castle. Instead, castle expects an already-issued
-**Cloudflare Origin CA** wildcard certificate for your domain, and reads it
-from sops-nix secrets `caddy/origin.crt` and `caddy/origin.key`. The
-Cloudflare edge terminates public TLS (Universal SSL) and re-encrypts to
-the origin using the CA cert. This removes ACME/renewal entirely (Origin CA
-certs are valid up to 15 years) and lets castle stay hidden behind CF's IP
-range.
-
-### One-time Cloudflare + sops setup
-
-1. In the Cloudflare dashboard: **SSL/TLS → Origin Server → Create Certificate**.
-   Include both `*.example.com` and `example.com`, ECC, 15 years. Save the
-   cert (`origin.crt`) and private key (`origin.key`).
-2. Set **SSL/TLS mode** to **Full (strict)**.
-3. For each service domain, add an **A record** pointing to the host's IP
-   with the **proxy on** (orange cloud).
-4. On the box, after the first install, derive its age recipient from the SSH
-   host key (`ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`). Add that
-   recipient (plus your own laptop's age key) to `.sops.yaml` in your
-   instance repo.
-5. Create `secrets/<host>.yaml` via `sops` with keys `caddy/origin.crt` and
-   `caddy/origin.key` (the CF cert + key). Reference it from `hosts.nix`:
-   ```nix
-   sops.defaultSopsFile = ./secrets/citadel.yaml;
-   ```
-
-That covers every service that follows. Add more (`discourse`, `plane`,
-`zulip` — coming) without touching the TLS/domain wiring.
+- **Data-only host declarations.** Each host is a NixOS module in
+  `hosts.nix`, tuned through `castle.*` options. Nothing per-host is
+  hardcoded in the library.
+- **Options with sensible defaults.** Every module toggles via
+  `castle.<x>.enable`. Bare-metal boxes turn off `castle.hetzner.enable`
+  and add their own disko + hardware imports.
+- **One source of truth for users.** `castle.users.<name>` declares
+  people once; every service provisions the same list.
+- **No ACME.** Cloudflare Origin CA covers all subdomains for 15 years.
+- **No forking.** Consume as a flake input; tune via options; add your
+  own modules alongside.
 
 ## Flake outputs
 
-- `nixosModules.default` — aggregator, imports every castle module + sops-nix. Opt-in via `castle.*.enable`.
-- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,caddy,postgres,services-forgejo}` — individual leaves.
-- `diskoConfigs.zfs-single` — `/dev/sda`: `bios_boot` (1M) + `/boot` ext4 (1G) + `rpool` ZFS (aes-256-gcm + zstd); datasets `root`, `nix`, `home`, `reserved`.
-- `lib.mkHost { name, cfg }` — thin wrapper around `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the chosen `diskoConfigs.<disk>`. Sets hostname, hostId (derived from name), root's authorized keys from `config.castle.host.sshKeys`.
-- `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration` into a `deploy.nodes.<name>` entry (hostname from `castle.host.ipv4`, user = root).
-- `apps.<system>.install` — wraps `nixos-anywhere`, generates initrd host key on first run.
-- `templates.default` — the skeleton copied by `nix flake init`. Ships a devShell with `install-host` (bootstrap), `update-secrets` (populate sops secrets), and `deploy` (deploy-rs) in PATH.
+- `nixosModules.default` — aggregator; imports every castle module +
+  sops-nix. Opt-in via `castle.*.enable`.
+- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,users,caddy,postgres,services-forgejo}`
+  — individual leaves.
+- `diskoConfigs.zfs-single` — `/dev/sda`: `bios_boot` (1M) + `/boot`
+  ext4 (1G) + `rpool` ZFS (aes-256-gcm + zstd) with datasets `root`,
+  `nix`, `home`, `reserved`.
+- `lib.mkHost { name, cfg }` — thin wrapper around
+  `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the
+  chosen `diskoConfigs.<disk>` (default `zfs-single`).
+- `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration`
+  into a `deploy.nodes.<name>` entry for deploy-rs.
+- `apps.<system>.install` — wraps `nixos-anywhere`.
+- `templates.default` — the skeleton copied by `nix flake init`.
 
-## Local development
+## Repo layout
 
-If you're hacking on castle alongside your instance, override the input:
-
-```sh
-nix flake update --override-input castle path:/path/to/castle
-# or in your instance's flake.nix:
-#   castle.url = "path:/path/to/castle";
 ```
+castle/
+├── flake.nix
+├── modules/
+│   ├── default.nix              # aggregator + castle.host options
+│   ├── nix-defaults.nix
+│   ├── hetzner-cloud.nix
+│   ├── zfs.nix
+│   ├── initrd-ssh.nix
+│   ├── ssh.nix
+│   ├── sops.nix
+│   ├── users.nix
+│   ├── caddy.nix
+│   ├── postgres.nix
+│   └── services/
+│       └── forgejo.nix
+├── disko/
+│   └── zfs-single.nix
+├── lib/
+│   ├── mkHost.nix
+│   └── mkDeploy.nix
+├── install.sh                   # runs as `install-host` in the devShell
+├── update-secrets.sh            # runs as `update-secrets` in the devShell
+└── templates/default/           # copied by `nix flake init`
+```
+
+## Options quick reference
+
+| option                            | default        |
+|-----------------------------------|----------------|
+| `castle.host.ipv4`                | *(required)*   |
+| `castle.host.sshKeys`             | `[]`           |
+| `castle.hetzner.enable`           | `true`         |
+| `castle.zfs.enable`               | `true`         |
+| `castle.zfs.autoScrub`            | `true`         |
+| `castle.initrdSsh.enable`         | `true`         |
+| `castle.initrdSsh.port`           | `2222`         |
+| `castle.ssh.enable`               | `true`         |
+| `castle.ssh.port`                 | `22`           |
+| `castle.nixDefaults.enable`       | `true`         |
+| `castle.nixDefaults.timeZone`     | `"UTC"`        |
+| `castle.users.<name>.email`       | *(required)*   |
+| `castle.users.<name>.admin`       | `false`        |
+| `castle.caddy.enable`             | `false`, auto  |
+| `castle.postgres.enable`          | `false`, auto  |
+| `castle.services.forgejo.enable`  | `false`        |
+| `castle.services.forgejo.domain`  | *(required)*   |
