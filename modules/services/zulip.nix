@@ -58,7 +58,7 @@ in {
     ## Postgres — create db + user, allow password auth from podman bridge
     services.postgresql = {
       enableTCPIP = true;
-      settings.listen_addresses = lib.mkForce "127.0.0.1,10.88.0.1";
+      settings.listen_addresses = lib.mkForce "*";
       ensureDatabases = [ "zulip" ];
       ensureUsers = [{
         name = "zulip";
@@ -77,13 +77,13 @@ in {
       $PSQL -tAc "ALTER USER zulip WITH PASSWORD '$pw';"
     '';
 
-    ## Redis — bind to loopback + podman bridge
-    services.redis.servers."".bind = lib.mkForce "127.0.0.1 10.88.0.1";
+    ## Redis — bind to all interfaces; firewall keeps outside out
+    services.redis.servers."".bind = lib.mkForce "0.0.0.0";
 
     ## RabbitMQ (native, dedicated to zulip)
     services.rabbitmq = {
       enable = true;
-      listenAddress = "10.88.0.1";
+      listenAddress = "0.0.0.0";
       plugins = [ "rabbitmq_management" ];
     };
     # Zulip's rabbitmq user + password + permissions applied after rabbitmq starts.
@@ -97,7 +97,7 @@ in {
     ## Memcached
     services.memcached = {
       enable = true;
-      listen = "10.88.0.1";
+      listen = "0.0.0.0";
       port   = 11211;
     };
 
