@@ -92,6 +92,13 @@ in {
     # it does that only when RAILS_SERVE_STATIC_FILES is set.
     systemd.services.discourse.environment.RAILS_SERVE_STATIC_FILES = "1";
 
+    # The upstream discourse module hard-codes systemd dependencies on
+    # redis-discourse.service; since we point at castle-redis instead, that
+    # unit doesn't exist and systemd refuses to start discourse.service.
+    # Drop the stale references.
+    systemd.services.discourse.requires = lib.mkForce [];
+    systemd.services.discourse.bindsTo  = lib.mkForce [];
+
     services.discourse = {
       enable = true;
       hostname = cfg.domain;
