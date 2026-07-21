@@ -117,10 +117,12 @@ in {
       secretKeyBaseFile = config.sops.secrets."discourse/secret-key-base".path;
 
       # Share castle.redis with other services. dbNumber = 1 keeps Discourse's
-      # keyspace separate from Zulip's (which uses db 0).
+      # keyspace separate from Zulip's (which uses db 0). useSSL defaults to
+      # true when host != localhost — but castle.redis is plain-text.
       redis = {
         host = "castle-redis";
         dbNumber = 1;
+        useSSL = false;
       };
 
       # We run a shared castle.postgres (17). Discourse's module asserts on
