@@ -62,7 +62,8 @@ in {
 
     castle.postgres.enable = lib.mkDefault true;
     castle.caddy.enable    = lib.mkDefault true;
-    castle.redis.enable    = lib.mkDefault true;
+    # services.discourse ships its own dedicated Redis (services.redis.servers.discourse)
+    # — don't spin up the shared castle.redis alongside; both fight for port 6379.
     castle.caddy.virtualHosts.${cfg.domain} = "unix/${unicornSocket}";
 
     sops.secrets = lib.mkMerge [

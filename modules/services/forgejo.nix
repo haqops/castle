@@ -56,14 +56,14 @@ in {
       };
       script = ''
         wd=${lib.escapeShellArg config.services.forgejo.stateDir}
-        existing=$(forgejo --work-path "$wd" admin user list | tail -n +2 | awk '{print $2}')
+        existing=$(gitea --work-path "$wd" admin user list | tail -n +2 | awk '{print $2}')
         ${lib.concatMapStringsSep "\n" (name: let u = users.${name}; in ''
           if echo "$existing" | grep -qxF ${lib.escapeShellArg name}; then
             echo "user '${name}' already exists — skipping"
           else
             echo "creating user '${name}'${lib.optionalString u.admin " (admin)"}"
             pw="$(cat ${config.sops.secrets."users/${name}/password".path})"
-            forgejo --work-path "$wd" admin user create \
+            gitea --work-path "$wd" admin user create \
               ${lib.optionalString u.admin "--admin \\"}
               --username ${lib.escapeShellArg name} \
               --email ${lib.escapeShellArg u.email} \
