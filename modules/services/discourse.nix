@@ -88,9 +88,10 @@ in {
     # unless it's in the group.
     users.users.caddy.extraGroups = [ "discourse" ];
 
-    # With nginx disabled, Rails itself has to serve /assets/*. In production
-    # it does that only when RAILS_SERVE_STATIC_FILES is set.
-    systemd.services.discourse.environment.RAILS_SERVE_STATIC_FILES = "1";
+    # With nginx disabled, Rails itself has to serve /assets/*. Discourse reads
+    # its own `serve_static_assets` from discourse.conf; production.rb sets
+    # config.public_file_server.enabled from that. RAILS_SERVE_STATIC_FILES is
+    # ignored.
 
     # The upstream discourse module hard-codes systemd dependencies on
     # redis-discourse.service; since we point at castle-redis instead, that
@@ -106,6 +107,7 @@ in {
       # We front discourse with our own Caddy instead of the built-in nginx.
       nginx.enable = false;
       enableACME = false;
+      backendSettings.serve_static_assets = true;
 
       admin = {
         username = adminName;
