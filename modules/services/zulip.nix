@@ -28,6 +28,7 @@ in {
       };
       uploadsBucket = lib.mkOption { type = lib.types.str; };
       avatarsBucket = lib.mkOption { type = lib.types.str; };
+      backupsBucket = lib.mkOption { type = lib.types.str; };
       region        = lib.mkOption { type = lib.types.str; default = "auto"; };
     };
     smtp = {
@@ -149,6 +150,7 @@ in {
         SETTING_LOCAL_UPLOADS_DIR=None
         SETTING_S3_AUTH_UPLOADS_BUCKET=${cfg.s3.uploadsBucket}
         SETTING_S3_AVATAR_BUCKET=${cfg.s3.avatarsBucket}
+        SETTING_S3_BACKUP_BUCKET=${cfg.s3.backupsBucket}
         SETTING_S3_REGION=${cfg.s3.region}
         SETTING_S3_ENDPOINT_URL=${cfg.s3.endpoint}
         SETTING_S3_KEY=${config.sops.placeholder."zulip/s3-access-key-id"}
