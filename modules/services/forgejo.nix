@@ -42,7 +42,12 @@ in {
       after = [ "forgejo.service" ];
       requires = [ "forgejo.service" ];
       wantedBy = [ "multi-user.target" ];
-      path = [ config.services.forgejo.package ];
+      path = with pkgs; [
+        config.services.forgejo.package
+        coreutils
+        gawk
+        gnugrep
+      ];
       serviceConfig = {
         Type = "oneshot";
         User = "forgejo";
