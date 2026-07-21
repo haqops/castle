@@ -11,6 +11,7 @@
     ./postgres.nix
     ./redis.nix
     ./services/forgejo.nix
+    ./services/discourse.nix
   ];
 
   options.castle.host = {

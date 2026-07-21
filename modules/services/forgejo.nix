@@ -15,7 +15,7 @@ in {
   config = lib.mkIf cfg.enable {
     castle.postgres.enable = lib.mkDefault true;
     castle.caddy.enable    = lib.mkDefault true;
-    castle.caddy.virtualHosts.${cfg.domain} = port;
+    castle.caddy.virtualHosts.${cfg.domain} = "127.0.0.1:${toString port}";
 
     users.users.forgejo.extraGroups = [ "castle-user-secrets" ];
 

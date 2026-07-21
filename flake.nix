@@ -41,6 +41,8 @@
       caddy           = ./modules/caddy.nix;
       postgres        = ./modules/postgres.nix;
       services-forgejo = ./modules/services/forgejo.nix;
+      services-discourse = ./modules/services/discourse.nix;
+      redis            = ./modules/redis.nix;
     };
 
     diskoConfigs = {

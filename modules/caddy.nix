@@ -13,11 +13,13 @@ in {
       '';
     };
     virtualHosts = lib.mkOption {
-      type = lib.types.attrsOf lib.types.port;
+      type = lib.types.attrsOf lib.types.str;
       default = {};
       description = ''
-        Map of `domain → local port`. Service modules register their vhost
-        here (e.g. `castle.caddy.virtualHosts."git.example.com" = 3000`).
+        Map of `domain → reverse_proxy target`. The value is passed directly
+        to Caddy's `reverse_proxy` directive; use either a `host:port`
+        (e.g. `"127.0.0.1:3000"`) or a unix socket
+        (`"unix//run/foo/sock"`). Service modules register their vhost here.
       '';
     };
   };
@@ -36,10 +38,10 @@ in {
 
     services.caddy = {
       enable = true;
-      virtualHosts = lib.mapAttrs (domain: port: {
+      virtualHosts = lib.mapAttrs (_domain: target: {
         extraConfig = ''
           tls ${config.sops.secrets."caddy/origin.crt".path} ${config.sops.secrets."caddy/origin.key".path}
-          reverse_proxy 127.0.0.1:${toString port}
+          reverse_proxy ${target}
         '';
       }) cfg.virtualHosts;
     };
