@@ -29,10 +29,12 @@ castle: {
 }
 ```
 
-That's it — everything else defaults sensibly for a Hetzner Cloud VM. Install:
+That's it — everything else defaults sensibly for a Hetzner Cloud VM. Enter
+the devShell and install:
 
 ```sh
-nix run github:haqops/castle#install -- citadel
+nix develop
+install-host citadel
 ```
 
 `nixos-anywhere` kexecs a NixOS installer over any live Linux (Hetzner rescue,
