@@ -79,6 +79,9 @@ in {
 
     # Discourse needs to read the admin's password from users/<admin>/password.
     users.users.discourse.extraGroups = [ "castle-user-secrets" ];
+    # /run/discourse/sockets/ is 0750 owned by discourse — caddy can't traverse
+    # unless it's in the group.
+    users.users.caddy.extraGroups = [ "discourse" ];
 
     services.discourse = {
       enable = true;
