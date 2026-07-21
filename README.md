@@ -16,8 +16,9 @@ mkdir my-castle && cd my-castle
 nix flake init -t github:haqops/castle
 ```
 
-You now have `flake.nix`, `hosts.nix` (with commented examples), and a
-`.gitignore` covering `secrets/` and build artifacts. Fill in a host:
+You now have `flake.nix`, `hosts.nix` (with commented examples), `.envrc`
+(direnv auto-activation), and a `.gitignore` covering `secrets/` and build
+artifacts. Fill in a host:
 
 ```nix
 # hosts.nix
@@ -30,10 +31,10 @@ castle: {
 ```
 
 That's it — everything else defaults sensibly for a Hetzner Cloud VM. Enter
-the devShell and install:
+the devShell (or let direnv do it on `cd`) and install:
 
 ```sh
-nix develop
+nix develop      # or: direnv allow, then just cd back in
 install-host citadel
 ```
 
