@@ -9,6 +9,7 @@
     ./users.nix
     ./caddy.nix
     ./postgres.nix
+    ./redis.nix
     ./services/forgejo.nix
   ];
 
