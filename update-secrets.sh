@@ -20,11 +20,21 @@ done
 NIX=(nix --extra-experimental-features 'nix-command flakes')
 
 # Human-readable descriptions for known keys; anything else falls back to a
-# generic prompt. Extend as more services join castle.
+# generic prompt.
 declare -A DESCRIPTIONS=(
   ["caddy/origin.crt"]="Cloudflare Origin CA certificate (--BEGIN CERTIFICATE-- ...)"
   ["caddy/origin.key"]="Cloudflare Origin CA private key   (--BEGIN PRIVATE KEY-- ...)"
-  # users/*/password, forgejo/... → fallback description
+  ["discourse/secret-key-base"]="Rails secret_key_base (auto-generated)"
+  ["discourse/s3-access-key-id"]="R2 / S3 Access Key ID"
+  ["discourse/s3-secret-access-key"]="R2 / S3 Secret Access Key"
+  ["discourse/smtp-password"]="SMTP password for the configured provider"
+)
+
+# Generators: keys with an entry here are filled automatically by running the
+# command (no prompt). Users can still overwrite by editing the sops file
+# directly with `sops secrets/<host>.yaml`.
+declare -A GENERATORS=(
+  ["discourse/secret-key-base"]="openssl rand -hex 64"
 )
 
 # Convert "a/b/c" -> ["a"]["b"]["c"] for sops --set / --extract.
@@ -89,20 +99,31 @@ process_host() {
   for key in "${missing[@]}"; do echo "     $key"; done
   echo
 
-  local description value escaped
+  local description value escaped generator
   for key in "${missing[@]}"; do
     path="$(sops_path "$key")"
     description="${DESCRIPTIONS[$key]:-Value for $key}"
+    generator="${GENERATORS[$key]:-}"
 
     echo "── ${host} :: $key"
     echo "   $description"
-    echo "   Paste value; finish with Ctrl-D on empty line:"
-    value="$(cat)"
 
-    if [[ -z "$value" ]]; then
-      echo "   (empty — skipping $key)"
-      echo
-      continue
+    if [[ -n "$generator" ]]; then
+      value="$(eval "$generator")"
+      if [[ -z "$value" ]]; then
+        echo "   (generator '$generator' produced empty output — skipping)"
+        echo
+        continue
+      fi
+      echo "   auto-generated via: $generator"
+    else
+      echo "   Paste value; finish with Ctrl-D on empty line:"
+      value="$(cat)"
+      if [[ -z "$value" ]]; then
+        echo "   (empty — skipping $key)"
+        echo
+        continue
+      fi
     fi
 
     escaped="$(printf '%s' "$value" | jq -Rs '.')"
