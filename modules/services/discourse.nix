@@ -83,6 +83,10 @@ in {
     # unless it's in the group.
     users.users.caddy.extraGroups = [ "discourse" ];
 
+    # With nginx disabled, Rails itself has to serve /assets/*. In production
+    # it does that only when RAILS_SERVE_STATIC_FILES is set.
+    systemd.services.discourse.environment.RAILS_SERVE_STATIC_FILES = "1";
+
     services.discourse = {
       enable = true;
       hostname = cfg.domain;
