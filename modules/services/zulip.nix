@@ -56,19 +56,22 @@ in {
     castle.caddy.virtualHosts.${cfg.domain} = "127.0.0.1:8080";
 
     ## Postgres — create db + user, allow password auth from podman bridge.
-    ## Also inject hunspell 'en_us' dictionary files where postgres looks for
-    ## them; Zulip's migrations register a text-search config that uses them.
-    castle.postgres.package = pkgs.postgresql_17.overrideAttrs (old: {
-      postInstall = (old.postInstall or "") + ''
-        install -Dm 0644 ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.aff \
-          $out/share/postgresql/tsearch_data/en_us.affix
-        install -Dm 0644 ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.dic \
-          $out/share/postgresql/tsearch_data/en_us.dict
-      '';
-    });
+    ## Also make hunspell 'en_us' available in postgres tsearch_data; zulip's
+    ## initial migration registers a text-search config using it. We ship the
+    ## dictionary as an "extra plugin" so it lands in the same shared tree the
+    ## postgresql-and-plugins wrapper builds.
     services.postgresql = {
       enableTCPIP = true;
       settings.listen_addresses = lib.mkForce "*";
+      extraPlugins = _ps: [
+        (pkgs.runCommand "postgres-hunspell-en_us-tsearch" {} ''
+          mkdir -p $out/share/postgresql/tsearch_data
+          cp ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.aff \
+            $out/share/postgresql/tsearch_data/en_us.affix
+          cp ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.dic \
+            $out/share/postgresql/tsearch_data/en_us.dict
+        '')
+      ];
       ensureDatabases = [ "zulip" ];
       ensureUsers = [{
         name = "zulip";
