@@ -24,6 +24,7 @@ SECRETS_FILE="secrets/${HOST}.yaml"
 declare -A DESCRIPTIONS=(
   ["caddy/origin.crt"]="Cloudflare Origin CA certificate (--BEGIN CERTIFICATE-- ...)"
   ["caddy/origin.key"]="Cloudflare Origin CA private key   (--BEGIN PRIVATE KEY-- ...)"
+  ["forgejo/admin-password"]="Initial Forgejo admin password (used once on first deploy to create the user)"
 )
 
 # Convert "a/b/c" -> ["a"]["b"]["c"] for sops --set / --extract.
