@@ -58,17 +58,17 @@ in {
     ## Postgres — create db + user, allow password auth from podman bridge.
     ## Also inject hunspell 'en_us' dictionary files where postgres looks for
     ## them; Zulip's migrations register a text-search config that uses them.
+    castle.postgres.package = pkgs.postgresql_17.overrideAttrs (old: {
+      postInstall = (old.postInstall or "") + ''
+        install -Dm 0644 ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.aff \
+          $out/share/postgresql/tsearch_data/en_us.affix
+        install -Dm 0644 ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.dic \
+          $out/share/postgresql/tsearch_data/en_us.dict
+      '';
+    });
     services.postgresql = {
       enableTCPIP = true;
       settings.listen_addresses = lib.mkForce "*";
-      package = pkgs.postgresql_17.overrideAttrs (old: {
-        postInstall = (old.postInstall or "") + ''
-          install -Dm 0644 ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.aff \
-            $out/share/postgresql/tsearch_data/en_us.affix
-          install -Dm 0644 ${pkgs.hunspellDicts.en_US}/share/hunspell/en_US.dic \
-            $out/share/postgresql/tsearch_data/en_us.dict
-        '';
-      });
       ensureDatabases = [ "zulip" ];
       ensureUsers = [{
         name = "zulip";
