@@ -1,0 +1,5 @@
+secrets/
+result
+result-*
+.direnv/
+*.swp
