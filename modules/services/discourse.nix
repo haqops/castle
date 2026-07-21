@@ -119,7 +119,7 @@ in {
       };
 
       siteSettings = {
-        security.force_https = true;
+        security.force_https = lib.mkForce true;
         files = {
           enable_s3_uploads    = true;
           s3_region            = cfg.s3.region;
