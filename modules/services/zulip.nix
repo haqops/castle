@@ -195,9 +195,27 @@ in {
     };
 
     # Ensure the container systemd unit waits for the host services it depends on.
+    # Also work around a netavark quirk on 25.05 where the container's veth is
+    # created without being attached to podman0, leaving the bridge NO-CARRIER
+    # and the container unable to reach host.containers.internal.
     systemd.services.${"podman-zulip"} = {
       after    = [ "postgresql.service" "redis-.service" "rabbitmq.service" "memcached.service" ];
       requires = [ "postgresql.service" "rabbitmq.service" "memcached.service" ];
+      serviceConfig.ExecStartPost = pkgs.writeShellScript "podman-zulip-fix-bridge" ''
+        set -e
+        # Give netavark a moment to configure the interfaces.
+        ${pkgs.coreutils}/bin/sleep 2
+        # Any veth without a master is presumed to belong to the podman bridge.
+        ${pkgs.iproute2}/bin/ip -o link show \
+          | ${pkgs.gawk}/bin/awk -F': ' '/veth[0-9]+@/ {print $2}' \
+          | ${pkgs.gawk}/bin/awk -F'@' '{print $1}' \
+          | while read veth; do
+              if ! ${pkgs.iproute2}/bin/ip -d link show "$veth" | ${pkgs.gnugrep}/bin/grep -q 'master '; then
+                ${pkgs.iproute2}/bin/ip link set "$veth" master podman0
+              fi
+            done
+        ${pkgs.iproute2}/bin/ip link set podman0 up
+      '';
     };
   };
 }
