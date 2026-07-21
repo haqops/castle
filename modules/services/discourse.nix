@@ -96,6 +96,11 @@ in {
 
       secretKeyBaseFile = config.sops.secrets."discourse/secret-key-base".path;
 
+      # We run a shared castle.postgres (17). Discourse's module asserts on
+      # PostgreSQL 15, which is a conservative default: 17 works with
+      # Discourse in practice.
+      database.ignorePostgresqlVersion = true;
+
       mail = {
         notificationEmailAddress = if cfg.smtp.fromAddress != null
           then cfg.smtp.fromAddress
