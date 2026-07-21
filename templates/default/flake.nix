@@ -27,8 +27,8 @@
         (pkgs.writeShellScriptBin "install-host" ''
           exec ${castle}/install.sh "$@"
         '')
-        (pkgs.writeShellScriptBin "castle-secrets" ''
-          exec ${castle}/secrets.sh "$@"
+        (pkgs.writeShellScriptBin "update-secrets" ''
+          exec ${castle}/update-secrets.sh "$@"
         '')
         deploy-rs.packages.${system}.default
         pkgs.sops
@@ -40,7 +40,7 @@
         export SOPS_AGE_KEY_FILE="''${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
         echo "castle instance. commands:"
         echo "  install-host <name>    provision <name> from scratch (keys, secrets, NixOS)"
-        echo "  castle-secrets <name>  interactively fill missing sops secrets for <name>"
+        echo "  update-secrets <name>  interactively fill missing sops secrets for <name>"
         echo "  deploy .#<name>        activate current config on <name>"
       '';
     };

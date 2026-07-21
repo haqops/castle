@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# castle-secrets — populate sops secrets for a host interactively.
+# update-secrets — populate sops secrets for a host interactively.
 #
 # Reads the list of expected secrets from
 #   .#nixosConfigurations.<host>.config.sops.secrets
 # and prompts for each one that is not yet set in secrets/<host>.yaml.
 # Existing values are left untouched.
 #
-# Usage: ./secrets.sh <host>
-# Run from the farm repo (CWD contains flake.nix + .sops.yaml + hosts.nix).
+# Usage: ./update-secrets.sh <host>
+# Run from the instance repo (CWD contains flake.nix + .sops.yaml + hosts.nix).
 
 set -euo pipefail
 

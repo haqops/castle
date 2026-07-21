@@ -66,7 +66,7 @@ if [[ $USE_SECRETS -eq 1 ]]; then
   fi
 
   echo ">> checking sops secrets for ${HOST}"
-  bash "$(dirname "$0")/secrets.sh" "$HOST"
+  bash "$(dirname "$0")/update-secrets.sh" "$HOST"
 fi
 
 EXTRA="$(mktemp -d)"

@@ -43,7 +43,7 @@ install-host citadel
 - generates the initrd SSH host key
 - if the config declares any sops secrets, generates a main SSH host key
   (which doubles as the sops age identity), checks `.sops.yaml` includes
-  the derived age recipient, and runs `castle-secrets` to prompt for any
+  the derived age recipient, and runs `update-secrets` to prompt for any
   missing values
 - bundles the keys via `--extra-files` and kexecs a NixOS installer over
   any live Linux (Hetzner rescue, a running Debian, etc.)
@@ -186,7 +186,7 @@ That covers every service that follows. Add more (`discourse`, `plane`,
 - `lib.mkHost { name, cfg }` — thin wrapper around `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the chosen `diskoConfigs.<disk>`. Sets hostname, hostId (derived from name), root's authorized keys from `config.castle.host.sshKeys`.
 - `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration` into a `deploy.nodes.<name>` entry (hostname from `castle.host.ipv4`, user = root).
 - `apps.<system>.install` — wraps `nixos-anywhere`, generates initrd host key on first run.
-- `templates.default` — the skeleton copied by `nix flake init`. Ships a devShell with `install-host` (bootstrap) and `deploy` (deploy-rs) in PATH.
+- `templates.default` — the skeleton copied by `nix flake init`. Ships a devShell with `install-host` (bootstrap), `update-secrets` (populate sops secrets), and `deploy` (deploy-rs) in PATH.
 
 ## Local development
 
