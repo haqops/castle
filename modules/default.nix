@@ -5,6 +5,10 @@
     ./zfs.nix
     ./initrd-ssh.nix
     ./ssh.nix
+    ./sops.nix
+    ./caddy.nix
+    ./postgres.nix
+    ./services/forgejo.nix
   ];
 
   options.castle.host = {

@@ -7,16 +7,29 @@
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, disko, ... }: {
+  outputs = { self, nixpkgs, disko, sops-nix, ... }: {
     nixosModules = {
-      default       = ./modules;                    # aggregator: all castle modules, opt-in via castle.*.enable
-      nix-defaults  = ./modules/nix-defaults.nix;
-      hetzner-cloud = ./modules/hetzner-cloud.nix;
-      zfs           = ./modules/zfs.nix;
-      initrd-ssh    = ./modules/initrd-ssh.nix;
-      ssh           = ./modules/ssh.nix;
+      default = {
+        imports = [
+          sops-nix.nixosModules.sops
+          ./modules
+        ];
+      };
+      nix-defaults    = ./modules/nix-defaults.nix;
+      hetzner-cloud   = ./modules/hetzner-cloud.nix;
+      zfs             = ./modules/zfs.nix;
+      initrd-ssh      = ./modules/initrd-ssh.nix;
+      ssh             = ./modules/ssh.nix;
+      sops            = ./modules/sops.nix;
+      caddy           = ./modules/caddy.nix;
+      postgres        = ./modules/postgres.nix;
+      services-forgejo = ./modules/services/forgejo.nix;
     };
 
     diskoConfigs = {

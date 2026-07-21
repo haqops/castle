@@ -115,11 +115,52 @@ them off individually.
 | `castle.nixDefaults.enable`   | `true`         | flakes, GC, TZ, locale, base toolbox        |
 | `castle.nixDefaults.timeZone` | `"UTC"`        |                                             |
 | `castle.nixDefaults.extraPackages` | `[]`      |                                             |
+| `castle.caddy.enable`         | `false`, auto-on when a service registers a vhost | reverse proxy with a Cloudflare Origin CA cert |
+| `castle.caddy.virtualHosts`   | `{}`           | domain → local port; services register here |
+| `castle.postgres.enable`      | `false`, auto-on when a service needs it | shared PostgreSQL instance          |
+| `castle.postgres.package`     | `pkgs.postgresql_17` |                                          |
+| `castle.services.forgejo.enable` | `false`     | Forgejo (git + CI)                          |
+| `castle.services.forgejo.domain` | *(required if enabled)* | e.g. `"git.example.com"`         |
+
+## Services
+
+Service modules auto-enable the infrastructure they need — turning on
+`castle.services.forgejo.enable` also enables `castle.caddy` and
+`castle.postgres`, and registers the vhost.
+
+TLS is not managed by castle. Instead, castle expects an already-issued
+**Cloudflare Origin CA** wildcard certificate for your domain, and reads it
+from sops-nix secrets `caddy/origin.crt` and `caddy/origin.key`. The
+Cloudflare edge terminates public TLS (Universal SSL) and re-encrypts to
+the origin using the CA cert. This removes ACME/renewal entirely (Origin CA
+certs are valid up to 15 years) and lets castle stay hidden behind CF's IP
+range.
+
+### One-time Cloudflare + sops setup
+
+1. In the Cloudflare dashboard: **SSL/TLS → Origin Server → Create Certificate**.
+   Include both `*.example.com` and `example.com`, ECC, 15 years. Save the
+   cert (`origin.crt`) and private key (`origin.key`).
+2. Set **SSL/TLS mode** to **Full (strict)**.
+3. For each service domain, add an **A record** pointing to the host's IP
+   with the **proxy on** (orange cloud).
+4. On the box, after the first install, derive its age recipient from the SSH
+   host key (`ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub`). Add that
+   recipient (plus your own laptop's age key) to `.sops.yaml` in your
+   instance repo.
+5. Create `secrets/<host>.yaml` via `sops` with keys `caddy/origin.crt` and
+   `caddy/origin.key` (the CF cert + key). Reference it from `hosts.nix`:
+   ```nix
+   sops.defaultSopsFile = ./secrets/citadel.yaml;
+   ```
+
+That covers every service that follows. Add more (`discourse`, `plane`,
+`zulip` — coming) without touching the TLS/domain wiring.
 
 ## Flake outputs
 
-- `nixosModules.default` — aggregator, imports everything; opt-in via `castle.*.enable`.
-- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh}` — individual leaves.
+- `nixosModules.default` — aggregator, imports every castle module + sops-nix. Opt-in via `castle.*.enable`.
+- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,caddy,postgres,services-forgejo}` — individual leaves.
 - `diskoConfigs.zfs-single` — `/dev/sda`: `bios_boot` (1M) + `/boot` ext4 (1G) + `rpool` ZFS (aes-256-gcm + zstd); datasets `root`, `nix`, `home`, `reserved`.
 - `lib.mkHost { name, cfg }` — thin wrapper around `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the chosen `diskoConfigs.<disk>`. Sets hostname, hostId (derived from name), root's authorized keys from `config.castle.host.sshKeys`.
 - `apps.<system>.install` — wraps `nixos-anywhere`, generates initrd host key on first run.

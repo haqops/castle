@@ -21,6 +21,19 @@ castle: {
   #   castle.zfs.autoScrub   = false;
   # };
 
+  # Running Forgejo behind a Cloudflare Origin CA cert.
+  # Prereqs on the farm side: sops-encrypted `caddy/origin.crt` and
+  # `caddy/origin.key`; see README for the CF setup + `.sops.yaml` skeleton.
+  # citadel = {
+  #   castle.host.ipv4    = "203.0.113.42";
+  #   castle.host.sshKeys = [ "ssh-ed25519 AAAA..." ];
+  #   sops.defaultSopsFile = ./secrets/citadel.yaml;
+  #   castle.services.forgejo = {
+  #     enable = true;
+  #     domain = "git.haqops.com";       # replace with your own domain
+  #   };
+  # };
+
   # Bare metal / non-Hetzner: bring your own hardware-config and disko.
   # bastion = {
   #   disk = null;                    # opt out of built-in disko
