@@ -6,6 +6,7 @@
     ./initrd-ssh.nix
     ./ssh.nix
     ./sops.nix
+    ./users.nix
     ./caddy.nix
     ./postgres.nix
     ./services/forgejo.nix

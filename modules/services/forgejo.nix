@@ -1,23 +1,14 @@
 { config, lib, pkgs, ... }: let
   cfg = config.castle.services.forgejo;
   port = 3000;
+  users = config.castle.users;
+  userNames = builtins.attrNames users;
 in {
   options.castle.services.forgejo = {
     enable = lib.mkEnableOption "Forgejo (git hosting + CI)";
     domain = lib.mkOption {
       type = lib.types.str;
       description = "Public domain, e.g. \"git.example.com\". Cloudflare Origin CA cert must cover it.";
-    };
-    admin = {
-      username = lib.mkOption {
-        type = lib.types.str;
-        default = "admin";
-        description = "Initial admin login; created on first activation if missing.";
-      };
-      email = lib.mkOption {
-        type = lib.types.str;
-        description = "Contact email for the admin user.";
-      };
     };
   };
 
@@ -26,11 +17,7 @@ in {
     castle.caddy.enable    = lib.mkDefault true;
     castle.caddy.virtualHosts.${cfg.domain} = port;
 
-    sops.secrets."forgejo/admin-password" = {
-      owner = "forgejo";
-      group = "forgejo";
-      mode = "0400";
-    };
+    users.users.forgejo.extraGroups = [ "castle-user-secrets" ];
 
     services.forgejo = {
       enable = true;
@@ -50,8 +37,8 @@ in {
       };
     };
 
-    systemd.services.forgejo-admin-init = {
-      description = "Ensure the initial Forgejo admin user exists";
+    systemd.services.forgejo-users-init = lib.mkIf (userNames != []) {
+      description = "Provision Forgejo accounts for castle.users";
       after = [ "forgejo.service" ];
       requires = [ "forgejo.service" ];
       wantedBy = [ "multi-user.target" ];
@@ -64,18 +51,21 @@ in {
       };
       script = ''
         wd=${lib.escapeShellArg config.services.forgejo.stateDir}
-        user=${lib.escapeShellArg cfg.admin.username}
-        if forgejo --work-path "$wd" admin user list | tail -n +2 | awk '{print $2}' | grep -qxF "$user"; then
-          echo "admin '$user' already exists — nothing to do"
-          exit 0
-        fi
-        pw="$(cat ${config.sops.secrets."forgejo/admin-password".path})"
-        forgejo --work-path "$wd" admin user create \
-          --admin \
-          --username "$user" \
-          --email ${lib.escapeShellArg cfg.admin.email} \
-          --password "$pw" \
-          --must-change-password=false
+        existing=$(forgejo --work-path "$wd" admin user list | tail -n +2 | awk '{print $2}')
+        ${lib.concatMapStringsSep "\n" (name: let u = users.${name}; in ''
+          if echo "$existing" | grep -qxF ${lib.escapeShellArg name}; then
+            echo "user '${name}' already exists — skipping"
+          else
+            echo "creating user '${name}'${lib.optionalString u.admin " (admin)"}"
+            pw="$(cat ${config.sops.secrets."users/${name}/password".path})"
+            forgejo --work-path "$wd" admin user create \
+              ${lib.optionalString u.admin "--admin \\"}
+              --username ${lib.escapeShellArg name} \
+              --email ${lib.escapeShellArg u.email} \
+              --password "$pw" \
+              --must-change-password=false
+          fi
+        '') userNames}
       '';
     };
   };
