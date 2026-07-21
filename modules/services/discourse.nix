@@ -118,16 +118,19 @@ in {
         };
       };
 
-      siteSettings.files = {
-        enable_s3_uploads    = true;
-        s3_region            = cfg.s3.region;
-        s3_endpoint          = cfg.s3.endpoint;
-        s3_upload_bucket     = cfg.s3.uploadsBucket;
-        s3_backup_bucket     = cfg.s3.backupsBucket;
-        s3_access_key_id     = { _secret = config.sops.secrets."discourse/s3-access-key-id".path; };
-        s3_secret_access_key = { _secret = config.sops.secrets."discourse/s3-secret-access-key".path; };
-        enable_backups       = true;
-        backup_location      = "s3";
+      siteSettings = {
+        security.force_https = true;
+        files = {
+          enable_s3_uploads    = true;
+          s3_region            = cfg.s3.region;
+          s3_endpoint          = cfg.s3.endpoint;
+          s3_upload_bucket     = cfg.s3.uploadsBucket;
+          s3_backup_bucket     = cfg.s3.backupsBucket;
+          s3_access_key_id     = { _secret = config.sops.secrets."discourse/s3-access-key-id".path; };
+          s3_secret_access_key = { _secret = config.sops.secrets."discourse/s3-secret-access-key".path; };
+          enable_backups       = true;
+          backup_location      = "s3";
+        };
       };
     };
   };
