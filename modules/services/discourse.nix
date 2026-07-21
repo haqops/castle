@@ -62,9 +62,14 @@ in {
 
     castle.postgres.enable = lib.mkDefault true;
     castle.caddy.enable    = lib.mkDefault true;
-    # services.discourse ships its own dedicated Redis (services.redis.servers.discourse)
-    # — don't spin up the shared castle.redis alongside; both fight for port 6379.
+    castle.redis.enable    = lib.mkDefault true;
     castle.caddy.virtualHosts.${cfg.domain} = "unix/${unicornSocket}";
+
+    # Discourse's module creates its own redis-discourse.service iff redis.host
+    # is "localhost" or "127.0.0.1". Point it at a /etc/hosts alias that
+    # resolves to loopback but reads as "external" to the module, so it skips
+    # spawning its own instance and shares castle.redis with Zulip.
+    networking.hosts."127.0.0.1" = [ "castle-redis" ];
 
     sops.secrets = lib.mkMerge [
       {
@@ -103,6 +108,13 @@ in {
       };
 
       secretKeyBaseFile = config.sops.secrets."discourse/secret-key-base".path;
+
+      # Share castle.redis with other services. dbNumber = 1 keeps Discourse's
+      # keyspace separate from Zulip's (which uses db 0).
+      redis = {
+        host = "castle-redis";
+        dbNumber = 1;
+      };
 
       # We run a shared castle.postgres (17). Discourse's module asserts on
       # PostgreSQL 15, which is a conservative default: 17 works with
