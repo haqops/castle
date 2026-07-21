@@ -27,12 +27,21 @@
         (pkgs.writeShellScriptBin "install-host" ''
           exec ${castle}/install.sh "$@"
         '')
+        (pkgs.writeShellScriptBin "castle-secrets" ''
+          exec ${castle}/secrets.sh "$@"
+        '')
         deploy-rs.packages.${system}.default
+        pkgs.sops
+        pkgs.age
+        pkgs.ssh-to-age
+        pkgs.jq
       ];
       shellHook = ''
+        export SOPS_AGE_KEY_FILE="''${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"
         echo "castle instance. commands:"
-        echo "  install-host <name>   bootstrap NixOS on <name> (fresh box, no secrets)"
-        echo "  deploy .#<name>       activate current config on <name> via deploy-rs"
+        echo "  install-host <name>    provision <name> from scratch (keys, secrets, NixOS)"
+        echo "  castle-secrets <name>  interactively fill missing sops secrets for <name>"
+        echo "  deploy .#<name>        activate current config on <name>"
       '';
     };
   };

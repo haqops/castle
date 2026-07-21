@@ -38,9 +38,19 @@ nix develop      # or: direnv allow, then just cd back in
 install-host citadel
 ```
 
-`nixos-anywhere` kexecs a NixOS installer over any live Linux (Hetzner rescue,
-a running Debian, etc.). On first run for a host it generates an initrd host
-key into `secrets/<host>/` (gitignored), then prompts for the ZFS passphrase.
+`install-host` does everything the box needs in one shot:
+
+- generates the initrd SSH host key
+- if the config declares any sops secrets, generates a main SSH host key
+  (which doubles as the sops age identity), checks `.sops.yaml` includes
+  the derived age recipient, and runs `castle-secrets` to prompt for any
+  missing values
+- bundles the keys via `--extra-files` and kexecs a NixOS installer over
+  any live Linux (Hetzner rescue, a running Debian, etc.)
+- prompts for the ZFS passphrase during install
+
+On first boot the box already knows its SSH host key, so `sops-nix` can
+decrypt the shipped secrets and every service starts immediately.
 
 On every boot the box waits in initrd for the passphrase. Unlock:
 
