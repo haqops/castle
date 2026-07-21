@@ -11,9 +11,13 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    deploy-rs = {
+      url = "github:serokell/deploy-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, disko, sops-nix, ... }: {
+  outputs = { self, nixpkgs, disko, sops-nix, deploy-rs, ... }: {
     nixosModules = {
       default = {
         imports = [
@@ -37,7 +41,8 @@
     };
 
     lib = {
-      mkHost = import ./lib/mkHost.nix { inherit nixpkgs disko self; };
+      mkHost   = import ./lib/mkHost.nix   { inherit nixpkgs disko self; };
+      mkDeploy = import ./lib/mkDeploy.nix { inherit deploy-rs; };
     };
 
     templates.default = {

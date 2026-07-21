@@ -51,6 +51,17 @@ systemd-tty-ask-password-agent --query
 
 Then boot continues, `sshd` on port 22 comes up.
 
+Once the box is up and you edit `hosts.nix` (or any castle module), push
+changes with deploy-rs:
+
+```sh
+deploy .#citadel
+```
+
+`deploy` builds the config locally (or on the remote), copies the closure,
+activates it, and rolls back automatically if activation or a health check
+fails.
+
 ## `hosts.nix` shape
 
 `hosts.nix` is a function taking `castle` and returning `{ <hostname> = <cfg>; }`.
@@ -163,8 +174,9 @@ That covers every service that follows. Add more (`discourse`, `plane`,
 - `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,caddy,postgres,services-forgejo}` — individual leaves.
 - `diskoConfigs.zfs-single` — `/dev/sda`: `bios_boot` (1M) + `/boot` ext4 (1G) + `rpool` ZFS (aes-256-gcm + zstd); datasets `root`, `nix`, `home`, `reserved`.
 - `lib.mkHost { name, cfg }` — thin wrapper around `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the chosen `diskoConfigs.<disk>`. Sets hostname, hostId (derived from name), root's authorized keys from `config.castle.host.sshKeys`.
+- `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration` into a `deploy.nodes.<name>` entry (hostname from `castle.host.ipv4`, user = root).
 - `apps.<system>.install` — wraps `nixos-anywhere`, generates initrd host key on first run.
-- `templates.default` — the skeleton copied by `nix flake init`.
+- `templates.default` — the skeleton copied by `nix flake init`. Ships a devShell with `install-host` (bootstrap) and `deploy` (deploy-rs) in PATH.
 
 ## Local development
 
