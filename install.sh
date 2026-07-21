@@ -23,7 +23,7 @@ fi
 
 if [[ -z "$IP" ]]; then
   IP="$(nix --extra-experimental-features 'nix-command flakes' eval --raw --impure \
-        --expr "(import ./hosts.nix ((builtins.getFlake (toString ./.)).inputs.castle)).${HOST}.ipv4")"
+        --expr "(import ./hosts.nix ((builtins.getFlake (toString ./.)).inputs.castle)).${HOST}.castle.host.ipv4")"
 fi
 
 if [[ -z "$IP" ]]; then
