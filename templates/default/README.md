@@ -59,7 +59,8 @@ your own disko + hardware config — see the examples in `hosts.nix`.
 ## Adding users
 
 `castle.users` is a global registry. Every service that has its own
-accounts (currently just Forgejo) provisions the same list.
+accounts (Forgejo, Discourse, and anything you add later) provisions
+the same list.
 
 ```nix
 castle.users = {
@@ -93,6 +94,36 @@ citadel = {
 Turning on Forgejo auto-enables Caddy and PostgreSQL and provisions
 accounts for every entry in `castle.users`.
 
+## Adding a service: Discourse
+
+```nix
+citadel = {
+  # ...host stuff, castle.users...
+  sops.defaultSopsFile = ./secrets/citadel.yaml;
+
+  castle.services.discourse = {
+    enable = true;
+    domain = "discourse.example.com";
+    s3 = {
+      endpoint      = "https://<account_id>.r2.cloudflarestorage.com";
+      uploadsBucket = "<bucket-for-uploads>";
+      backupsBucket = "<bucket-for-backups>";
+      region        = "auto";
+    };
+  };
+};
+```
+
+Turning on Discourse auto-enables Caddy and PostgreSQL. It is private by
+default: no guest reads, invite-only signup, admin-approved accounts.
+The first admin — the `castle.users` entry with `admin = true` — is
+created automatically; log in with the password from
+`users/<name>/password` in sops.
+
+Discourse needs S3-compatible storage for uploads and backups. Castle
+assumes Cloudflare R2 (endpoint pattern above); anything with an S3 API
+works.
+
 ## Cloudflare (one-time per zone)
 
 Reverse proxy in castle expects a Cloudflare Origin CA certificate — no
@@ -110,32 +141,29 @@ below).
 
 ## Sops (one-time per instance)
 
-Edit `.sops.yaml`:
+You need a `.sops.yaml` with one entry — your own age recipient (the
+laptop / workstation from which you'll run `deploy` and edit secrets):
 
 ```yaml
 keys:
   - &admin_you  age1YOUR_LAPTOP_PUBLIC_KEY
-  - &citadel    age1CITADEL_PUBLIC_KEY
 
-creation_rules:
-  - path_regex: secrets/citadel\.yaml$
-    key_groups:
-      - age:
-          - *admin_you
-          - *citadel
+creation_rules: []
 ```
 
-`&citadel` is the box's age recipient, derived from its SSH host key.
-Two ways to get it:
+No age key yet? Generate one:
 
-- **After a bare install** — SSH in and compute:
-  ```sh
-  ssh root@<host> cat /etc/ssh/ssh_host_ed25519_key.pub \
-    | nix run nixpkgs#ssh-to-age
-  ```
-- **Before install** — `install-host` generates the SSH host key locally
-  under `secrets/<host>/ssh/` and prints the derived recipient. Paste it
-  into `.sops.yaml`, then re-run `install-host`.
+```sh
+mkdir -p ~/.config/sops/age
+nix shell nixpkgs#age -c age-keygen -o ~/.config/sops/age/keys.txt
+grep 'public key' ~/.config/sops/age/keys.txt
+```
+
+`install-host` handles the per-host part: it generates each box's SSH
+host key locally, derives the box's age recipient, appends an anchor
+plus a matching creation_rule to `.sops.yaml`, and re-encrypts existing
+secrets for the new recipient set. You never edit host keys into
+`.sops.yaml` by hand.
 
 ## Provisioning a fresh host
 
@@ -148,9 +176,10 @@ What happens:
 1. Generates the initrd SSH host key at `secrets/citadel/initrd/`.
 2. If the config declares any sops secrets:
    - Generates the main SSH host key at `secrets/citadel/ssh/`. Its
-     public part is the box's age recipient — `install-host` prints it.
-   - Verifies `.sops.yaml` includes that recipient. If missing, prints
-     what to add and exits.
+     public part is the box's age recipient.
+   - Adds an anchor and a per-host creation_rule to `.sops.yaml` (or
+     re-encrypts existing secrets under the new recipient set if the
+     host is being reinstalled).
    - Runs `update-secrets` to prompt for any missing sops values.
 3. Bundles both SSH keys via `--extra-files` and kexecs a NixOS installer
    over any live Linux (Hetzner rescue, a running Debian, cloud image).
@@ -166,6 +195,9 @@ Unlocking the ZFS pool on each boot (from your laptop):
 ssh -p 2222 root@<host>
 systemd-tty-ask-password-agent --query
 ```
+
+The same reminder is printed as an initrd motd on every SSH login into
+port 2222, so you don't have to remember the command.
 
 ## Deploying changes
 
@@ -206,6 +238,12 @@ deploy .#<host>
 - **Forgejo user provisioning fails.** `journalctl -u forgejo-users-init`
   — usually the password is too weak (Forgejo requires ≥ 6 chars by
   default).
+- **Discourse loads but assets 404.** Check that `serve_static_assets`
+  is `true` in `/var/lib/discourse/config/discourse.conf` — required
+  because castle disables Discourse's built-in nginx.
+- **Discourse admin login fails after install.** The password lives in
+  sops at `users/<admin>/password`; it must be ≥ 10 chars for
+  Discourse's admin policy.
 
 ## Reference
 
