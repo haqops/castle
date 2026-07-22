@@ -1,117 +1,81 @@
 # castle
 
-Opinionated NixOS foundation for building small self-hosted infrastructures.
+**Agent Castle** — NixOS foundation for self-hosted infrastructure where
+humans and their agents work together.
+
+Castle is a library of NixOS modules and tooling: declarative,
+opinionated, encrypted end to end. Point it at some Linux boxes — a
+Hetzner VM, a machine under your desk, a datacenter in your basement —
+and out comes a working environment for the mixed human/agent workflow.
+
+## Why
+
+The substrate for humans working alongside agents doesn't really exist
+yet. Team chat wasn't designed for it, cloud IDEs assume one human per
+seat, docker-on-laptop is not a place for agents to actually live.
+Teams end up gluing SaaS accounts together, scattering conversation
+history across random tools, and hoping nobody's laptop dies with a
+session inside it.
+
+Castle takes the position that this substrate should be:
+
+- **Yours.** Self-hosted, encrypted disks, no third party sitting in
+  the middle of your agent conversations.
+- **Nix-first.** Every host, user, service, and secret declared in one
+  repo. Rebuilds are reproducible. Rollback is a git revert.
+- **Small.** Not fleet management. A handful of nodes, arranged
+  however fits.
+- **Opinionated.** Sensible defaults, one blessed way to do each
+  thing. Cloudflare Origin CA over ACME. sops-nix over Vault. ZFS over
+  tin foil.
 
 ## What you get
 
-- Encrypted ZFS root (aes-256-gcm + zstd), SSH unlock in initrd on port 2222
-- DHCP via systemd-networkd, tuned for Hetzner Cloud VMs (bare metal / other
-  clouds are supported via option toggles + your own disko/hardware-config)
-- Reverse proxy (Caddy) with a Cloudflare Origin CA cert — no ACME, no
-  renewals, 15-year validity
-- Shared PostgreSQL + sops-nix for secrets, age identity derived from the
-  host's SSH host key
-- One declarative user registry (`castle.users`) that every service
-  provisions accounts from
-- One-shot provisioning: `install-host <name>` generates SSH host keys,
-  populates missing sops secrets, kexecs a NixOS installer, and activates
-  the box with services already running
-- `deploy .#<name>` for post-install activation with automatic rollback
+A library of NixOS modules for the pieces you need:
 
-Available services today: **Forgejo** (git hosting + CI). Planned:
-Discourse, Plane, Zulip. Towers (workstations for humans + agents) later.
+- **Long-form discussion** — Discourse behind Caddy, private by default
+  (no guest reads, invite-only signup, admin-approved accounts).
+- **Code hosting** — Forgejo with declaratively provisioned accounts.
+- **A user registry** — `castle.users.<name>` declares people once;
+  every service reads the same list.
+- **Encrypted disks** — ZFS with per-host passphrase, entered remotely
+  over SSH into the initrd.
+- **One-shot provisioning** — `install-host <name>` generates keys,
+  plants secrets, and kexecs a NixOS installer over any live Linux.
+- **Declarative deploys** — `deploy .#<name>` with automatic rollback.
+
+Arrange the pieces however you want. Everything on one node. One node
+per service. A dedicated node for each person's agents. Castle is a
+toolkit; the topology is yours.
+
+More services (issue tracking, chat, dashboards, agent-facing APIs) land
+as they're needed.
+
+## Design tenets
+
+- **Data-only host declarations.** Each host is one entry in
+  `hosts.nix`, tuned through `castle.*` options. Nothing per-host is
+  hardcoded in the library.
+- **One source of truth for users.** `castle.users.<name>` propagates
+  to every service that has accounts.
+- **Encrypted by default.** No unencrypted disks in the fleet.
+- **No ACME.** Cloudflare Origin CA, fifteen-year cert, one rotation
+  on your calendar instead of one per certificate.
+- **No forking.** Consume as a flake input, tune via options, add your
+  own modules alongside.
 
 ## Getting started
-
-Create your own castle instance — a private repo with your hosts, users,
-and secrets:
 
 ```sh
 mkdir my-castle && cd my-castle
 nix flake init -t github:haqops/castle
 ```
 
-Everything about running your castle — configuring hosts, adding users,
-Cloudflare setup, provisioning secrets, install and deploy — lives in the
-`README.md` that gets copied into your instance.
+Everything about operating your castle — Cloudflare setup, sops
+recipients, adding a host, deploying — lives in the README that gets
+copied into your instance.
 
-## Design tenets
+## Reference
 
-- **Data-only host declarations.** Each host is a NixOS module in
-  `hosts.nix`, tuned through `castle.*` options. Nothing per-host is
-  hardcoded in the library.
-- **Options with sensible defaults.** Every module toggles via
-  `castle.<x>.enable`. Bare-metal boxes turn off `castle.hetzner.enable`
-  and add their own disko + hardware imports.
-- **One source of truth for users.** `castle.users.<name>` declares
-  people once; every service provisions the same list.
-- **No ACME.** Cloudflare Origin CA covers all subdomains for 15 years.
-- **No forking.** Consume as a flake input; tune via options; add your
-  own modules alongside.
-
-## Flake outputs
-
-- `nixosModules.default` — aggregator; imports every castle module +
-  sops-nix. Opt-in via `castle.*.enable`.
-- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,users,caddy,postgres,services-forgejo}`
-  — individual leaves.
-- `diskoConfigs.zfs-single` — `/dev/sda`: `bios_boot` (1M) + `/boot`
-  ext4 (1G) + `rpool` ZFS (aes-256-gcm + zstd) with datasets `root`,
-  `nix`, `home`, `reserved`.
-- `lib.mkHost { name, cfg }` — thin wrapper around
-  `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the
-  chosen `diskoConfigs.<disk>` (default `zfs-single`).
-- `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration`
-  into a `deploy.nodes.<name>` entry for deploy-rs.
-- `apps.<system>.install` — wraps `nixos-anywhere`.
-- `templates.default` — the skeleton copied by `nix flake init`.
-
-## Repo layout
-
-```
-castle/
-├── flake.nix
-├── modules/
-│   ├── default.nix              # aggregator + castle.host options
-│   ├── nix-defaults.nix
-│   ├── hetzner-cloud.nix
-│   ├── zfs.nix
-│   ├── initrd-ssh.nix
-│   ├── ssh.nix
-│   ├── sops.nix
-│   ├── users.nix
-│   ├── caddy.nix
-│   ├── postgres.nix
-│   └── services/
-│       └── forgejo.nix
-├── disko/
-│   └── zfs-single.nix
-├── lib/
-│   ├── mkHost.nix
-│   └── mkDeploy.nix
-├── install.sh                   # runs as `install-host` in the devShell
-├── update-secrets.sh            # runs as `update-secrets` in the devShell
-└── templates/default/           # copied by `nix flake init`
-```
-
-## Options quick reference
-
-| option                            | default        |
-|-----------------------------------|----------------|
-| `castle.host.ipv4`                | *(required)*   |
-| `castle.host.sshKeys`             | `[]`           |
-| `castle.hetzner.enable`           | `true`         |
-| `castle.zfs.enable`               | `true`         |
-| `castle.zfs.autoScrub`            | `true`         |
-| `castle.initrdSsh.enable`         | `true`         |
-| `castle.initrdSsh.port`           | `2222`         |
-| `castle.ssh.enable`               | `true`         |
-| `castle.ssh.port`                 | `22`           |
-| `castle.nixDefaults.enable`       | `true`         |
-| `castle.nixDefaults.timeZone`     | `"UTC"`        |
-| `castle.users.<name>.email`       | *(required)*   |
-| `castle.users.<name>.admin`       | `false`        |
-| `castle.caddy.enable`             | `false`, auto  |
-| `castle.postgres.enable`          | `false`, auto  |
-| `castle.services.forgejo.enable`  | `false`        |
-| `castle.services.forgejo.domain`  | *(required)*   |
+Technical reference for the library — flake outputs, module options,
+repo layout — lives in [`docs/reference.md`](docs/reference.md).
