@@ -49,8 +49,8 @@
     };
 
     lib = {
-      mkHost   = import ./lib/mkHost.nix   { inherit nixpkgs disko self; };
-      mkDeploy = import ./lib/mkDeploy.nix { inherit deploy-rs; };
+      mkNixosConfigs = import ./lib/mkNixosConfigs.nix { inherit nixpkgs disko self; };
+      mkDeploy       = import ./lib/mkDeploy.nix       { inherit deploy-rs; };
     };
 
     templates.default = {

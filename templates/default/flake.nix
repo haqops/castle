@@ -10,11 +10,9 @@
   outputs = { self, castle, nixpkgs, deploy-rs, ... }: let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
-    hosts = import ./hosts.nix castle;
+    data = import ./hosts.nix castle;
   in {
-    nixosConfigurations = builtins.mapAttrs
-      (name: cfg: castle.lib.mkHost { inherit name cfg; })
-      hosts;
+    nixosConfigurations = castle.lib.mkNixosConfigs data;
 
     deploy.nodes = castle.lib.mkDeploy self.nixosConfigurations;
 

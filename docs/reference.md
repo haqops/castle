@@ -14,9 +14,13 @@ copies into your instance.
 - `diskoConfigs.zfs-single` — `/dev/sda` layout: `bios_boot` (1M) +
   `/boot` ext4 (1G) + `rpool` ZFS (`aes-256-gcm` + `zstd`) with datasets
   `root`, `nix`, `home`, `reserved`.
-- `lib.mkHost { name, cfg }` — thin wrapper around
-  `nixpkgs.lib.nixosSystem`. Auto-imports `nixosModules.default` and the
-  chosen `diskoConfigs.<disk>` (default `zfs-single`).
+- `lib.mkNixosConfigs { users, hosts }` — takes the `{ users, hosts }`
+  payload returned by an instance's `hosts.nix` and yields
+  `nixosConfigurations`. Auto-imports `nixosModules.default` and the
+  chosen `diskoConfigs.<disk>` (default `zfs-single`) into each host,
+  and injects `castle.users = users` so the global registry propagates
+  everywhere. Skips hosts whose `castle.host.arch` is darwin (those go
+  through the darwin path).
 - `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration`
   into a `deploy.nodes.<name>` entry for deploy-rs.
 - `apps.<system>.install` — wraps `nixos-anywhere` and pre-flight secret
@@ -45,7 +49,7 @@ castle/
 ├── disko/
 │   └── zfs-single.nix
 ├── lib/
-│   ├── mkHost.nix
+│   ├── mkNixosConfigs.nix
 │   └── mkDeploy.nix
 ├── install.sh                   # runs as `install-host` in the devShell
 ├── update-secrets.sh            # runs as `update-secrets` in the devShell

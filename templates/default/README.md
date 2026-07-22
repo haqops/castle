@@ -5,9 +5,10 @@ A private registry of your hosts, users, and secrets — built on top of the
 
 ## Files
 
-- `flake.nix` — instance flake; imports castle, builds `nixosConfigurations`
-  and `deploy.nodes` from `hosts.nix`.
-- `hosts.nix` — the whole castle: hosts, users, service configuration.
+- `flake.nix` — instance flake; imports castle, feeds `hosts.nix` through
+  `castle.lib.mkNixosConfigs` (and later `mkDarwinConfigs`) to build the
+  configurations and `deploy.nodes`.
+- `hosts.nix` — the whole castle: returns `{ users, hosts }`.
 - `.sops.yaml` — recipients config (age keys that can decrypt secrets).
 - `secrets/<host>.yaml` — sops-encrypted secrets for a host. Safe to commit.
 - `secrets/<host>/` — SSH host keys (gitignored).
@@ -42,14 +43,32 @@ Commands in the devShell:
 - `deploy .#<name>` — build + activate current config on a host. Rolls
   back automatically on failure.
 
-## Adding a host
+## Shape of hosts.nix
 
-Add an entry to `hosts.nix`. Minimum for a Hetzner Cloud VM:
+`hosts.nix` returns `{ users, hosts }`:
+
+- `users` — global registry of everyone (humans and their agents), declared
+  once. Every service (Forgejo, Discourse, …) and every tower reads from it.
+- `hosts` — one NixOS module per box; opts into castle services or tower
+  provisioning via `castle.*` options.
 
 ```nix
-citadel = {
-  castle.host.ipv4    = "203.0.113.42";
-  castle.host.sshKeys = [ "ssh-ed25519 AAAA... you@laptop" ];
+castle: {
+  users = { ... };
+  hosts = { ... };
+}
+```
+
+## Adding a host
+
+Add an entry under `hosts`. Minimum for a Hetzner Cloud VM:
+
+```nix
+hosts = {
+  citadel = {
+    castle.host.ipv4    = "203.0.113.42";
+    castle.host.sshKeys = [ "ssh-ed25519 AAAA... you@laptop" ];
+  };
 };
 ```
 
@@ -58,12 +77,12 @@ your own disko + hardware config — see the examples in `hosts.nix`.
 
 ## Adding users
 
-`castle.users` is a global registry. Every service that has its own
-accounts (Forgejo, Discourse, and anything you add later) provisions
-the same list.
+`users` is the castle's global registry. Every service that provisions
+accounts (Forgejo, Discourse, and anything you add later) reads the same
+list.
 
 ```nix
-castle.users = {
+users = {
   admin = { email = "admin@example.com"; admin = true; };
   alice = { email = "alice@example.com"; };
 };
@@ -80,8 +99,8 @@ you want it gone.
 ## Adding a service: Forgejo
 
 ```nix
-citadel = {
-  # ...host stuff, castle.users...
+hosts.citadel = {
+  # ...host stuff...
   sops.defaultSopsFile = ./secrets/citadel.yaml;
 
   castle.services.forgejo = {
@@ -92,13 +111,13 @@ citadel = {
 ```
 
 Turning on Forgejo auto-enables Caddy and PostgreSQL and provisions
-accounts for every entry in `castle.users`.
+accounts for every entry in `users`.
 
 ## Adding a service: Discourse
 
 ```nix
-citadel = {
-  # ...host stuff, castle.users...
+hosts.citadel = {
+  # ...host stuff...
   sops.defaultSopsFile = ./secrets/citadel.yaml;
 
   castle.services.discourse = {
