@@ -55,9 +55,10 @@
     };
 
     darwinModules = {
-      default    = ./darwinModules;
-      identities = ./darwinModules/identities.nix;
-      tower      = ./darwinModules/tower.nix;
+      default              = ./darwinModules;
+      identities           = ./darwinModules/identities.nix;
+      tower                = ./darwinModules/tower.nix;
+      services-rapid-mlx   = ./darwinModules/services/rapid-mlx.nix;
     };
 
     diskoConfigs = {

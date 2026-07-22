@@ -2,6 +2,7 @@
   imports = [
     ./identities.nix
     ./tower.nix
+    ./services/rapid-mlx.nix
   ];
 
   options.castle.host = {
