@@ -1,4 +1,4 @@
-{ config, lib, ... }: let
+{ config, lib, pkgs, ... }: let
   cfg = config.castle.services.discourse;
   users = config.castle.users;
   adminNames = builtins.filter (n: users.${n}.admin) (builtins.attrNames users);
@@ -91,6 +91,10 @@ in {
       nginx.enable = false;
       enableACME = false;
       backendSettings.serve_static_assets = true;
+
+      plugins = with pkgs.discourse.plugins; [
+        discourse-solved
+      ];
 
       admin = {
         username = adminName;
