@@ -14,8 +14,8 @@ in {
     };
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.postgresql_17;
-      defaultText = lib.literalExpression "pkgs.postgresql_17";
+      default = pkgs.postgresql_15;
+      defaultText = lib.literalExpression "pkgs.postgresql_15";
     };
   };
 

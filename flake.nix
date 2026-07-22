@@ -42,8 +42,6 @@
       postgres        = ./modules/postgres.nix;
       services-forgejo = ./modules/services/forgejo.nix;
       services-discourse = ./modules/services/discourse.nix;
-      services-zulip     = ./modules/services/zulip.nix;
-      redis            = ./modules/redis.nix;
     };
 
     diskoConfigs = {

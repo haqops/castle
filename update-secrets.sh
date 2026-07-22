@@ -28,12 +28,6 @@ declare -A DESCRIPTIONS=(
   ["discourse/s3-access-key-id"]="R2 / S3 Access Key ID"
   ["discourse/s3-secret-access-key"]="R2 / S3 Secret Access Key"
   ["discourse/smtp-password"]="SMTP password for the configured provider"
-  ["zulip/postgres-password"]="Password for the 'zulip' user in shared castle.postgres (auto-generated)"
-  ["zulip/rabbitmq-password"]="Password for the 'zulip' user in RabbitMQ (auto-generated)"
-  ["zulip/secret-key"]="Zulip Django secret_key (auto-generated)"
-  ["zulip/s3-access-key-id"]="R2 / S3 Access Key ID for zulip buckets"
-  ["zulip/s3-secret-access-key"]="R2 / S3 Secret Access Key for zulip buckets"
-  ["zulip/smtp-password"]="SMTP password for the configured provider"
 )
 
 # Generators: keys with an entry here are filled automatically by running the
@@ -41,9 +35,6 @@ declare -A DESCRIPTIONS=(
 # directly with `sops secrets/<host>.yaml`.
 declare -A GENERATORS=(
   ["discourse/secret-key-base"]="openssl rand -hex 64"
-  ["zulip/postgres-password"]="openssl rand -hex 32"
-  ["zulip/rabbitmq-password"]="openssl rand -hex 32"
-  ["zulip/secret-key"]="openssl rand -hex 32"
 )
 
 # Convert "a/b/c" -> ["a"]["b"]["c"] for sops --set / --extract.

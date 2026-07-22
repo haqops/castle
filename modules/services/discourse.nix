@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }: let
+{ config, lib, ... }: let
   cfg = config.castle.services.discourse;
   users = config.castle.users;
   adminNames = builtins.filter (n: users.${n}.admin) (builtins.attrNames users);
@@ -62,14 +62,7 @@ in {
 
     castle.postgres.enable = lib.mkDefault true;
     castle.caddy.enable    = lib.mkDefault true;
-    castle.redis.enable    = lib.mkDefault true;
     castle.caddy.virtualHosts.${cfg.domain} = "unix/${unicornSocket}";
-
-    # Discourse's module creates its own redis-discourse.service iff redis.host
-    # is "localhost" or "127.0.0.1". Point it at a /etc/hosts alias that
-    # resolves to loopback but reads as "external" to the module, so it skips
-    # spawning its own instance and shares castle.redis with Zulip.
-    networking.hosts."127.0.0.1" = [ "castle-redis" ];
 
     sops.secrets = lib.mkMerge [
       {
@@ -88,23 +81,13 @@ in {
     # unless it's in the group.
     users.users.caddy.extraGroups = [ "discourse" ];
 
-    # With nginx disabled, Rails itself has to serve /assets/*. Discourse reads
-    # its own `serve_static_assets` from discourse.conf; production.rb sets
-    # config.public_file_server.enabled from that. RAILS_SERVE_STATIC_FILES is
-    # ignored.
-
-    # The upstream discourse module hard-codes systemd dependencies on
-    # redis-discourse.service; since we point at castle-redis instead, that
-    # unit doesn't exist and systemd refuses to start discourse.service.
-    # Drop the stale references.
-    systemd.services.discourse.requires = lib.mkForce [];
-    systemd.services.discourse.bindsTo  = lib.mkForce [];
-
     services.discourse = {
       enable = true;
       hostname = cfg.domain;
 
       # We front discourse with our own Caddy instead of the built-in nginx.
+      # With nginx off, Rails must serve /assets/* — Discourse reads this from
+      # discourse.conf (RAILS_SERVE_STATIC_FILES env var is ignored).
       nginx.enable = false;
       enableACME = false;
       backendSettings.serve_static_assets = true;
@@ -117,20 +100,6 @@ in {
       };
 
       secretKeyBaseFile = config.sops.secrets."discourse/secret-key-base".path;
-
-      # Share castle.redis with other services. dbNumber = 1 keeps Discourse's
-      # keyspace separate from Zulip's (which uses db 0). useSSL defaults to
-      # true when host != localhost — but castle.redis is plain-text.
-      redis = {
-        host = "castle-redis";
-        dbNumber = 1;
-        useSSL = false;
-      };
-
-      # We run a shared castle.postgres (17). Discourse's module asserts on
-      # PostgreSQL 15, which is a conservative default: 17 works with
-      # Discourse in practice.
-      database.ignorePostgresqlVersion = true;
 
       mail = {
         notificationEmailAddress = if cfg.smtp.fromAddress != null
@@ -147,6 +116,12 @@ in {
 
       siteSettings = {
         security.force_https = lib.mkForce true;
+        # Fully-private forum: no anonymous reads, invite-only signup, admin
+        # approves every account. Override with lib.mkForce if you actually
+        # want a public forum.
+        login.login_required        = true;
+        login.invite_only           = true;
+        login.must_approve_users    = true;
         files = {
           enable_s3_uploads    = true;
           s3_region            = cfg.s3.region;

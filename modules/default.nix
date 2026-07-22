@@ -9,10 +9,8 @@
     ./users.nix
     ./caddy.nix
     ./postgres.nix
-    ./redis.nix
     ./services/forgejo.nix
     ./services/discourse.nix
-    ./services/zulip.nix
   ];
 
   options.castle.host = {
