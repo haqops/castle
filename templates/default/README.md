@@ -45,17 +45,20 @@ Commands in the devShell:
 
 ## Shape of hosts.nix
 
-`hosts.nix` returns `{ users, hosts }`:
+`hosts.nix` returns `{ humans, agents, hosts }`:
 
-- `users` — global registry of everyone (humans and their agents), declared
-  once. Every service (Forgejo, Discourse, …) and every tower reads from it.
-- `hosts` — one NixOS module per box; opts into castle services or tower
-  provisioning via `castle.*` options.
+- `humans` and `agents` — the castle's two global identity registries. Same
+  fields on both; the bucket says how the identity is created (humans via
+  SetupAssistant on macOS so they get SecureToken; agents declaratively
+  everywhere).
+- `hosts` — one NixOS or darwin module per box; opts into castle services
+  or tower provisioning via `castle.*` options.
 
 ```nix
 castle: {
-  users = { ... };
-  hosts = { ... };
+  humans = { ... };
+  agents = { ... };
+  hosts  = { ... };
 }
 ```
 
@@ -75,26 +78,31 @@ hosts = {
 For bare metal or non-Hetzner, opt out of the built-in defaults and provide
 your own disko + hardware config — see the examples in `hosts.nix`.
 
-## Adding users
+## Adding humans and agents
 
-`users` is the castle's global registry. Every service that provisions
-accounts (Forgejo, Discourse, and anything you add later) reads the same
-list.
+`humans` and `agents` are the castle's two identity registries. Every
+service that provisions accounts (Forgejo, Discourse, and anything you
+add later) reads both, unioned.
 
 ```nix
-users = {
+humans = {
   admin = { email = "admin@example.com"; admin = true; };
   alice = { email = "alice@example.com"; };
 };
+
+agents = {
+  admin-claude = { email = "admin-claude@example.com"; };
+};
 ```
 
-Each user gets one password shared across services, stored at sops key
-`users/<name>/password`. `update-secrets` will prompt for missing ones.
+Each identity gets one password shared across services, stored at sops
+key `users/<name>/password`. `update-secrets` will prompt for missing
+ones.
 
-Users are created on first activation. Passwords, emails, admin flags
+Accounts are created on first activation. Passwords, emails, admin flags
 changed later in `hosts.nix` are **not** synced back to services — this is
-create-only, no destructive updates. Delete a user in the service's UI if
-you want it gone.
+create-only, no destructive updates. Delete the account in the service's UI
+if you want it gone.
 
 ## Adding a service: Forgejo
 
@@ -111,7 +119,7 @@ hosts.citadel = {
 ```
 
 Turning on Forgejo auto-enables Caddy and PostgreSQL and provisions
-accounts for every entry in `users`.
+accounts for every entry in `humans` and `agents`.
 
 ## Adding a service: Discourse
 

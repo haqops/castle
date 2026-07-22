@@ -6,9 +6,10 @@
     ./initrd-ssh.nix
     ./ssh.nix
     ./sops.nix
-    ./users.nix
+    ./identities.nix
     ./caddy.nix
     ./postgres.nix
+    ./tower.nix
     ./services/forgejo.nix
     ./services/discourse.nix
   ];
@@ -22,6 +23,16 @@
       type = lib.types.listOf lib.types.str;
       default = [];
       description = "SSH public keys authorized for root on this host (and, by default, in initrd).";
+    };
+    arch = lib.mkOption {
+      type = lib.types.str;
+      default = "x86_64-linux";
+      description = ''
+        Nix system triple for this host. mkNixosConfigs handles
+        `x86_64-linux` and `aarch64-linux`; mkDarwinConfigs handles
+        `x86_64-darwin` and `aarch64-darwin`. Determines which builder
+        picks up the host.
+      '';
     };
   };
 }

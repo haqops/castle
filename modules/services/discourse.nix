@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }: let
   cfg = config.castle.services.discourse;
-  users = config.castle.users;
+  # Discourse doesn't distinguish humans from agents — both are members.
+  users = config.castle.humans // config.castle.agents;
   adminNames = builtins.filter (n: users.${n}.admin) (builtins.attrNames users);
   adminName = if adminNames == [] then null else builtins.head adminNames;
   # nixpkgs discourse module puts unicorn here; caddy proxies to it

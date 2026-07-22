@@ -1,9 +1,8 @@
-# Build the nixosConfigurations attrset from a `{ users, hosts }` payload.
-#
-# Filters out any host that declares a non-linux `castle.host.arch` — those
-# are dispatched to nix-darwin via `mkDarwinConfigs`.
+# Build the nixosConfigurations attrset from a `{ humans, agents, hosts }`
+# payload. Filters out hosts whose `castle.host.arch` is darwin — those go
+# through `mkDarwinConfigs`.
 { nixpkgs, disko, self }:
-{ users ? {}, hosts }:
+{ humans ? {}, agents ? {}, hosts }:
 let
   isLinux = cfg:
     let a = cfg.castle.host.arch or "x86_64-linux";
@@ -25,8 +24,8 @@ let
           users.users.root.openssh.authorizedKeys.keys = config.castle.host.sshKeys;
           system.stateVersion = "25.05";
         })
-        # Inject the global user registry into every host.
-        { castle.users = users; }
+        # Inject the global identity registries into every host.
+        { castle.humans = humans; castle.agents = agents; }
         nixosCfg
       ] ++ diskExtra;
     };

@@ -8,19 +8,19 @@ copies into your instance.
 
 - `nixosModules.default` — aggregator; imports every castle module plus
   sops-nix. Everything is opt-in via `castle.*.enable`.
-- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,caddy,postgres,services-forgejo,services-discourse}`
+- `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,identities,caddy,postgres,tower,services-forgejo,services-discourse}`
   — individual leaves, useful if you want to consume one piece without
   the aggregator.
 - `diskoConfigs.zfs-single` — `/dev/sda` layout: `bios_boot` (1M) +
   `/boot` ext4 (1G) + `rpool` ZFS (`aes-256-gcm` + `zstd`) with datasets
   `root`, `nix`, `home`, `reserved`.
-- `lib.mkNixosConfigs { users, hosts }` — takes the `{ users, hosts }`
+- `lib.mkNixosConfigs { humans ? {}, agents ? {}, hosts }` — takes the
   payload returned by an instance's `hosts.nix` and yields
   `nixosConfigurations`. Auto-imports `nixosModules.default` and the
   chosen `diskoConfigs.<disk>` (default `zfs-single`) into each host,
-  and injects `castle.users = users` so the global registry propagates
-  everywhere. Skips hosts whose `castle.host.arch` is darwin (those go
-  through the darwin path).
+  and injects `castle.humans = humans; castle.agents = agents` so the
+  global registries propagate everywhere. Skips hosts whose
+  `castle.host.arch` is darwin (those go through the darwin path).
 - `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration`
   into a `deploy.nodes.<name>` entry for deploy-rs.
 - `apps.<system>.install` — wraps `nixos-anywhere` and pre-flight secret
@@ -40,9 +40,10 @@ castle/
 │   ├── initrd-ssh.nix
 │   ├── ssh.nix
 │   ├── sops.nix
-│   ├── users.nix
+│   ├── identities.nix
 │   ├── caddy.nix
 │   ├── postgres.nix
+│   ├── tower.nix
 │   └── services/
 │       ├── forgejo.nix
 │       └── discourse.nix
@@ -71,8 +72,16 @@ castle/
 | `castle.ssh.port`                     | `22`           |
 | `castle.nixDefaults.enable`           | `true`         |
 | `castle.nixDefaults.timeZone`         | `"UTC"`        |
-| `castle.users.<name>.email`           | *(required)*   |
-| `castle.users.<name>.admin`           | `false`        |
+| `castle.humans.<name>.email`          | *(required)*   |
+| `castle.humans.<name>.admin`          | `false`        |
+| `castle.humans.<name>.sshKeys`        | `[]`           |
+| `castle.humans.<name>.shell`          | `null`         |
+| `castle.humans.<name>.editor`         | `null`         |
+| `castle.humans.<name>.tools`          | `[]`           |
+| `castle.agents.<name>.*`              | same as humans |
+| `castle.tower.enable`                 | `false`        |
+| `castle.tower.accounts`               | `[]`           |
+| `castle.tower.defaultTools`           | curated list   |
 | `castle.caddy.enable`                 | `false`, auto  |
 | `castle.postgres.enable`              | `false`, auto  |
 | `castle.postgres.package`             | `postgresql_15`|

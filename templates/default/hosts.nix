@@ -1,8 +1,10 @@
-# Register of users and hosts for this castle instance.
+# Register of identities and hosts for this castle instance.
 #
-# `users` is the global registry — everyone (humans and their agents) declared
-# once, referenced from every host. Fields like `shell` / `editor` / `tools`
-# only apply on towers; `email` and `admin` apply on service hosts.
+# `humans` and `agents` are the two global registries. Both use the same
+# submodule — the bucket is the signal to castle whether the identity should
+# be created via SetupAssistant (humans on darwin, so they get SecureToken
+# and can unlock FileVault) or declaratively by castle (agents everywhere;
+# humans on Linux). Both feed the same list of service accounts.
 #
 # `hosts` is a NixOS module per box. Set castle.* options; add extra imports if
 # needed. The library auto-imports castle.nixosModules.default and (unless
@@ -11,7 +13,7 @@
 # If this file will end up in a public repo, gitignore it and keep only your
 # own private copy.
 castle: {
-  users = {
+  humans = {
     # you = {
     #   email    = "you@example.com";
     #   admin    = true;
@@ -19,6 +21,14 @@ castle: {
     #   shell    = "zsh";
     #   editor   = "nvim";
     #   tools    = [ "gh" "delta" ];               # on top of the tower defaults
+    # };
+  };
+
+  agents = {
+    # you-claude = {
+    #   email    = "you-claude@example.com";
+    #   sshKeys  = [ "ssh-ed25519 AAAA... you-claude@studio" ];
+    #   tools    = [ "claude-code" ];
     # };
   };
 

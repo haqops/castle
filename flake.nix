@@ -38,8 +38,10 @@
       initrd-ssh      = ./modules/initrd-ssh.nix;
       ssh             = ./modules/ssh.nix;
       sops            = ./modules/sops.nix;
+      identities      = ./modules/identities.nix;
       caddy           = ./modules/caddy.nix;
       postgres        = ./modules/postgres.nix;
+      tower           = ./modules/tower.nix;
       services-forgejo = ./modules/services/forgejo.nix;
       services-discourse = ./modules/services/discourse.nix;
     };

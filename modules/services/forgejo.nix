@@ -1,7 +1,8 @@
 { config, lib, pkgs, ... }: let
   cfg = config.castle.services.forgejo;
   port = 3000;
-  users = config.castle.users;
+  # Forgejo doesn't distinguish humans from agents — both are Forgejo users.
+  users = config.castle.humans // config.castle.agents;
   userNames = builtins.attrNames users;
 in {
   options.castle.services.forgejo = {
