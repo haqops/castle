@@ -42,5 +42,17 @@ in {
       hostKeys = [ cfg.hostKeyPath ];
       authorizedKeys = cfg.authorizedKeys;
     };
+
+    # sshd's `PrintMotd yes` (default) means /etc/motd shows on login — turn
+    # that into the unlock cheatsheet instead of trying to auto-run the query
+    # (which would leave nowhere to go if unlock fails).
+    boot.initrd.systemd.contents."/etc/motd".text = ''
+
+      ── ${config.networking.hostName} initrd (root pool is locked)
+
+      Unlock ZFS:   systemd-tty-ask-password-agent --query
+      Inspect:      systemctl --failed ; journalctl -xb ; zpool status
+
+    '';
   };
 }
