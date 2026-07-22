@@ -5,6 +5,11 @@
     ./services/rapid-mlx.nix
   ];
 
+  # Determinate Nix (the recommended installer on Mac) owns Nix management
+  # itself. nix-darwin bails out with an error if it also tries. Default
+  # off; override on hosts using a classic multi-user Nix install.
+  config.nix.enable = lib.mkDefault false;
+
   options.castle.host = {
     ipv4 = lib.mkOption {
       type    = lib.types.nullOr lib.types.str;
