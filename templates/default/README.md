@@ -241,16 +241,24 @@ Bootstrap a Mac (Studio, mini, MacBook — any macOS box) into a castle
 tower. This is written for a Mac that already has Nix installed and a
 macOS user (say `user`) you do **not** want castle to touch.
 
-### 1. Enable flakes on the Mac
+### 1. Nix with flakes enabled
+
+If you don't have Nix yet, install it via
+[Determinate Systems' installer](https://github.com/DeterminateSystems/nix-installer):
+
+```sh
+curl -fsSL https://install.determinate.systems/nix | sh -s -- install
+```
+
+Determinate Nix ships with flakes turned on already — you can skip
+straight to the next step.
+
+If you're on the classic Nix installer, enable flakes explicitly:
 
 ```sh
 mkdir -p ~/.config/nix
 printf 'experimental-features = nix-command flakes\n' >> ~/.config/nix/nix.conf
 ```
-
-If Nix isn't installed yet, install it via
-[Determinate Systems' installer](https://github.com/DeterminateSystems/nix-installer)
-first — it handles Apple Silicon cleanly and stays uninstallable.
 
 ### 2. Get this repo onto the Mac
 
