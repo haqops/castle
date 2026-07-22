@@ -299,6 +299,17 @@ activate studio
 itself, so this works even before nix-darwin is installed system-wide —
 no separate `sudo nix run nix-darwin -- switch` bootstrap step.
 
+**One-time file rename on Determinate-installed Macs.** The first
+activation may complain about `/etc/zshenv` (and possibly `/etc/bashrc`
+or `/etc/zshrc`) being unexpected. Determinate's installer wrote them;
+nix-darwin wants to own them. Rename so it can:
+
+```sh
+sudo mv /etc/zshenv /etc/zshenv.before-nix-darwin
+# repeat for any other file the error names
+activate studio
+```
+
 ### 5. Every change after that
 
 Same command:
