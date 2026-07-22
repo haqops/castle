@@ -5,14 +5,16 @@
     castle.url = "github:haqops/castle";
     nixpkgs.follows = "castle/nixpkgs";
     deploy-rs.follows = "castle/deploy-rs";
+    darwin.follows = "castle/darwin";
   };
 
-  outputs = { self, castle, nixpkgs, deploy-rs, ... }: let
+  outputs = { self, castle, nixpkgs, deploy-rs, darwin, ... }: let
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
     data = import ./hosts.nix castle;
   in {
-    nixosConfigurations = castle.lib.mkNixosConfigs data;
+    nixosConfigurations  = castle.lib.mkNixosConfigs  data;
+    darwinConfigurations = castle.lib.mkDarwinConfigs data;
 
     deploy.nodes = castle.lib.mkDeploy self.nixosConfigurations;
 
@@ -40,7 +42,8 @@
         echo "castle instance. commands:"
         echo "  install-host <name>    provision <name> from scratch (keys, secrets, NixOS)"
         echo "  update-secrets <name>  interactively fill missing sops secrets for <name>"
-        echo "  deploy .#<name>        activate current config on <name>"
+        echo "  deploy .#<name>        activate current NixOS config on <name>"
+        echo "  darwin-rebuild switch --flake .#<studio>   activate current darwin config"
       '';
     };
   };

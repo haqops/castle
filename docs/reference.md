@@ -6,11 +6,13 @@ copies into your instance.
 
 ## Flake outputs
 
-- `nixosModules.default` — aggregator; imports every castle module plus
-  sops-nix. Everything is opt-in via `castle.*.enable`.
+- `nixosModules.default` — aggregator; imports every NixOS castle module
+  plus sops-nix. Everything is opt-in via `castle.*.enable`.
 - `nixosModules.{nix-defaults,hetzner-cloud,zfs,initrd-ssh,ssh,sops,identities,caddy,postgres,tower,services-forgejo,services-discourse}`
   — individual leaves, useful if you want to consume one piece without
   the aggregator.
+- `darwinModules.default` — nix-darwin aggregator for Mac towers.
+- `darwinModules.{identities,tower}` — individual leaves for darwin.
 - `diskoConfigs.zfs-single` — `/dev/sda` layout: `bios_boot` (1M) +
   `/boot` ext4 (1G) + `rpool` ZFS (`aes-256-gcm` + `zstd`) with datasets
   `root`, `nix`, `home`, `reserved`.
@@ -21,8 +23,14 @@ copies into your instance.
   and injects `castle.humans = humans; castle.agents = agents` so the
   global registries propagate everywhere. Skips hosts whose
   `castle.host.arch` is darwin (those go through the darwin path).
+- `lib.mkDarwinConfigs { humans ? {}, agents ? {}, hosts }` — same
+  payload, produces `darwinConfigurations`. Pulls in home-manager and
+  the darwin aggregator. Only picks up hosts whose `castle.host.arch`
+  is `x86_64-darwin` or `aarch64-darwin`.
 - `lib.mkDeploy nixosConfigurations` — turns each `nixosConfiguration`
-  into a `deploy.nodes.<name>` entry for deploy-rs.
+  into a `deploy.nodes.<name>` entry for deploy-rs. Darwin hosts are
+  activated with `darwin-rebuild switch --flake .#<name>` for now;
+  deploy-rs integration for darwin is deferred.
 - `apps.<system>.install` — wraps `nixos-anywhere` and pre-flight secret
   handling.
 - `templates.default` — the skeleton copied by `nix flake init`.
@@ -32,6 +40,10 @@ copies into your instance.
 ```
 castle/
 ├── flake.nix
+├── darwinModules/
+│   ├── default.nix
+│   ├── identities.nix
+│   └── tower.nix
 ├── modules/
 │   ├── default.nix              # aggregator + castle.host options
 │   ├── nix-defaults.nix
@@ -50,7 +62,9 @@ castle/
 ├── disko/
 │   └── zfs-single.nix
 ├── lib/
+│   ├── identitySubmodule.nix
 │   ├── mkNixosConfigs.nix
+│   ├── mkDarwinConfigs.nix
 │   └── mkDeploy.nix
 ├── install.sh                   # runs as `install-host` in the devShell
 ├── update-secrets.sh            # runs as `update-secrets` in the devShell
@@ -74,11 +88,14 @@ castle/
 | `castle.nixDefaults.timeZone`         | `"UTC"`        |
 | `castle.humans.<name>.email`          | *(required)*   |
 | `castle.humans.<name>.admin`          | `false`        |
+| `castle.humans.<name>.uid`            | `null`         |
 | `castle.humans.<name>.sshKeys`        | `[]`           |
 | `castle.humans.<name>.shell`          | `null`         |
 | `castle.humans.<name>.editor`         | `null`         |
 | `castle.humans.<name>.tools`          | `[]`           |
+| `castle.humans.<name>.extraPackages`  | `null`         |
 | `castle.agents.<name>.*`              | same as humans |
+| `castle.host.arch`                    | `"x86_64-linux"` |
 | `castle.tower.enable`                 | `false`        |
 | `castle.tower.accounts`               | `[]`           |
 | `castle.tower.defaultTools`           | curated list   |

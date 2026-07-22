@@ -235,6 +235,79 @@ deploy .#<name>
 `deploy-rs` builds the closure, copies to the host, activates, and rolls
 back on failure or health check timeout.
 
+## Adding a Mac tower
+
+Bootstrap a Mac (Studio, mini, MacBook — any macOS box) into a castle
+tower. This is written for a Mac that already has Nix installed and a
+macOS user (say `user`) you do **not** want castle to touch.
+
+### 1. Enable flakes on the Mac
+
+```sh
+mkdir -p ~/.config/nix
+printf 'experimental-features = nix-command flakes\n' >> ~/.config/nix/nix.conf
+```
+
+If Nix isn't installed yet, install it via
+[Determinate Systems' installer](https://github.com/DeterminateSystems/nix-installer)
+first — it handles Apple Silicon cleanly and stays uninstallable.
+
+### 2. Get this repo onto the Mac
+
+Clone your instance, or scp it over — however you move files. From
+here on, work inside the repo directory on the Mac.
+
+### 3. Register the tower in `hosts.nix`
+
+Add your macOS user under `humans` (only fields you care about — `email`
+is required, the rest is optional) and a tower host under `hosts`:
+
+```nix
+humans = {
+  user = {
+    email = "user@example.com";
+    tools = [ "gh" "jq" ];   # extra pkgs; go on top of castle.tower.defaultTools
+  };
+};
+
+hosts = {
+  studio = {
+    castle.host.arch      = "aarch64-darwin";   # or x86_64-darwin on Intel
+    castle.tower.enable   = true;
+    castle.tower.accounts = [ "user" ];
+  };
+};
+```
+
+### 4. First activation — bootstraps nix-darwin
+
+```sh
+sudo nix run nix-darwin -- switch --flake .#studio
+```
+
+This installs `darwin-rebuild` system-wide. Only needed once.
+
+### 5. Every change after that
+
+```sh
+darwin-rebuild switch --flake .#studio
+```
+
+Same story as `deploy .#<name>` on a NixOS host, just runs locally.
+
+### What castle touches, and what it doesn't
+
+- **Your existing macOS user** (`user` in the example): castle does
+  **not** touch `users.users.user`. It installs your requested packages
+  into `~/.nix-profile` via home-manager, and does **not** manage your
+  `.zshrc`, `.gitconfig`, or any other dotfile — those stay yours.
+- **Agents** listed in `castle.tower.accounts` and declared under
+  `castle.agents`: created declaratively by nix-darwin (`dscl`) with an
+  explicit `uid` you set on each agent. Headless — no SecureToken, no
+  FileVault access. Meant for background workloads, not humans.
+- **FileVault, iCloud, Homebrew, Time Machine**: outside castle's
+  scope. Whatever you already have keeps working.
+
 ## Managing secrets later
 
 Any time you enable a service or add a user that expects a sops secret:

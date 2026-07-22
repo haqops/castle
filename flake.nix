@@ -1,5 +1,5 @@
 {
-  description = "castle — NixOS foundation for encrypted Hetzner Cloud VMs";
+  description = "castle — Agent Castle: NixOS + nix-darwin foundation for humans and their agents";
 
   nixConfig = {
     extra-substituters = [ "https://nix-community.cachix.org" ];
@@ -22,9 +22,17 @@
       url = "github:serokell/deploy-rs";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    darwin = {
+      url = "github:LnL7/nix-darwin/nix-darwin-25.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    home-manager = {
+      url = "github:nix-community/home-manager/release-25.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, disko, sops-nix, deploy-rs, ... }: {
+  outputs = { self, nixpkgs, disko, sops-nix, deploy-rs, darwin, home-manager, ... }: {
     nixosModules = {
       default = {
         imports = [
@@ -46,13 +54,20 @@
       services-discourse = ./modules/services/discourse.nix;
     };
 
+    darwinModules = {
+      default    = ./darwinModules;
+      identities = ./darwinModules/identities.nix;
+      tower      = ./darwinModules/tower.nix;
+    };
+
     diskoConfigs = {
       zfs-single = ./disko/zfs-single.nix;
     };
 
     lib = {
-      mkNixosConfigs = import ./lib/mkNixosConfigs.nix { inherit nixpkgs disko self; };
-      mkDeploy       = import ./lib/mkDeploy.nix       { inherit deploy-rs; };
+      mkNixosConfigs  = import ./lib/mkNixosConfigs.nix  { inherit nixpkgs disko self; };
+      mkDarwinConfigs = import ./lib/mkDarwinConfigs.nix { inherit nixpkgs darwin home-manager self; };
+      mkDeploy        = import ./lib/mkDeploy.nix        { inherit deploy-rs; };
     };
 
     templates.default = {

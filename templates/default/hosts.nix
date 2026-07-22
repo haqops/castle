@@ -63,5 +63,15 @@ castle: {
     #   castle.host.sshKeys   = [ "ssh-ed25519 AAAA..." ];
     #   castle.hetzner.enable = false;
     # };
+
+    # Mac Studio (or any Mac) as a tower — nix-darwin.
+    # Humans on this box must exist via macOS Setup Assistant already;
+    # castle only applies their home-manager config. Agents are created
+    # declaratively — set an explicit uid on each.
+    # studio = {
+    #   castle.host.arch      = "aarch64-darwin";
+    #   castle.tower.enable   = true;
+    #   castle.tower.accounts = [ "you" "you-claude" ];
+    # };
   };
 }
