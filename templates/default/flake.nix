@@ -54,6 +54,10 @@
           pkgs.ssh-to-age
           pkgs.jq
           pkgs.openssl
+        ] ++ nixpkgs.lib.optionals pkgs.stdenv.isDarwin [
+          # darwin-rebuild lives here so `activate <mac-host>` works on
+          # the very first run — no `nix run nix-darwin --` bootstrap dance.
+          darwin.packages.${system}.default
         ];
         shellHook = ''
           export SOPS_AGE_KEY_FILE="''${SOPS_AGE_KEY_FILE:-$HOME/.config/sops/age/keys.txt}"

@@ -287,21 +287,25 @@ hosts = {
 };
 ```
 
-### 4. First activation — bootstraps nix-darwin
+### 4. Enter the devShell and activate
 
 ```sh
-sudo nix run nix-darwin -- switch --flake .#studio
+nix develop
+activate studio
 ```
 
-This installs `darwin-rebuild` system-wide. Only needed once.
+`activate` inspects the flake and dispatches to `darwin-rebuild switch
+--flake .#studio` under the hood. The devShell ships `darwin-rebuild`
+itself, so this works even before nix-darwin is installed system-wide —
+no separate `sudo nix run nix-darwin -- switch` bootstrap step.
 
 ### 5. Every change after that
 
-```sh
-darwin-rebuild switch --flake .#studio
-```
+Same command:
 
-Same story as `deploy .#<name>` on a NixOS host, just runs locally.
+```sh
+activate studio
+```
 
 ### What castle touches, and what it doesn't
 
